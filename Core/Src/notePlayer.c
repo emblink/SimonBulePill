@@ -175,5 +175,6 @@ void notePlayerPlayMelody(const Note mel[], uint32_t length)
 
 bool notePlayerIsPlaying()
 {
-	return melody != NULL;
+//	return melody != NULL;
+	return PWM_TIMER->CR1 & TIM_CR1_CEN_Msk;
 }

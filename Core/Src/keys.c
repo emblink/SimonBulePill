@@ -1,0 +1,8 @@
+#include "keys.h"
+
+const KeyPin keyTable[] = {
+	[KEY_RED] = {RED_BUTTON_GPIO_Port, RED_BUTTON_Pin},
+	[KEY_GREEN] = {GREEN_BUTTON_GPIO_Port, GREEN_BUTTON_Pin},
+	[KEY_BLUE] = {BLUE_BUTTON_GPIO_Port, BLUE_BUTTON_Pin},
+	[KEY_YELLOW] = {YELLOW_BUTTON_GPIO_Port, YELLOW_BUTTON_Pin},
+};

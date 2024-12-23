@@ -27,8 +27,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "notePlayer.h"
-#include "melodies.h"
+#include "game.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,10 +59,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void onPlaybackFinished()
-{
 
-}
 /* USER CODE END 0 */
 
 /**
@@ -104,31 +100,17 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  notePlayerInit(onPlaybackFinished);
+  gameInit();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int redPwm = 0;
-  int inc = 2;
-  uint32_t lastTick = 0;
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-  Melody melody = MelodyJingleBells;
+
   while (1)
   {
-	  uint32_t tick = HAL_GetTick();
-	  if (tick - lastTick >= 40) {
-		  redPwm += inc;
-		  if (redPwm >= 100 || redPwm <= 0) {
-			  inc = -inc;
-		  }
-		  TIM3->CCR1 = redPwm;
-		  lastTick = tick;
-	  }
-	  if (!notePlayerIsPlaying()) {
-		  notePlayerPlayMelody(getMelody(melody), getMelodyLength(melody));
-		  melody = (melody + 1) % MelodyCount;
-	  }
+	  gameProcess();
+	// Enter low-power mode, waiting for the next interrupt
+	  __WFI();  // Wait For Interrupt instruction
 //	  HAL_IWDG_Refresh(&hiwdg);
     /* USER CODE END WHILE */
 

@@ -6,6 +6,10 @@ typedef enum {
 	MelodyJingleBells,
 	MelodyHarryPotter,
 	MelodyStarWars,
+	MelodyPowerOn,
+	MelodyPowerOff,
+	MelodySuccess,
+	MelodyFail,
 	MelodyCount,
 	MelodyTest,
 } Melody;
