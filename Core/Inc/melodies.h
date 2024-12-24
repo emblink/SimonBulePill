@@ -10,6 +10,7 @@ typedef enum {
 	MelodyPowerOff,
 	MelodySuccess,
 	MelodyFail,
+	MelodyConfirm,
 	MelodyCount,
 	MelodyTest,
 } Melody;

@@ -134,7 +134,7 @@ void effectManagerProcess(void)
     }
 }
 
-static setEffect(Effect effect, Led led, uint32_t duration)
+static void setEffect(Effect effect, Led led, uint32_t duration, uint32_t period)
 {
 	if (EFFECT_BREATHE == effect) {
 		effects[led] = (EffectSettings) {
@@ -145,11 +145,17 @@ static setEffect(Effect effect, Led led, uint32_t duration)
 			.currentTrans = 0,
 			.totalTransNum = 2,
 			.trans = {
-				{ .startTime = 0, .duration = 1000, .startValue = 0, .endValue = 255 },  // Ramp up
-				{ .startTime = 1000, .duration = 1000, .startValue = 255, .endValue = 0 } // Ramp down
+				{ .startTime = 0, .duration = period / 2, .startValue = 0, .endValue = 255 },  // Ramp up
+				{ .startTime = 0, .duration = period / 2, .startValue = 255, .endValue = 0 } // Ramp down
 			}
 		};
-	} else if (EFFECT_FAST_BREATHE == effect) {
+	} else if (EFFECT_FAST_RUMP == effect) {
+		#define RUMP_UP 25
+		#define STATIC 50
+		#define RUMP_DOWN 25
+		const uint32_t rumpUpTime = period * RUMP_UP / 100;
+		const uint32_t staticTime = period * STATIC / 100;
+		const uint32_t rumpDownTime = period * RUMP_DOWN / 100;
 		effects[led] = (EffectSettings) {
 			.effect = EFFECT_BREATHE,
 			.startTime = 0,
@@ -158,9 +164,9 @@ static setEffect(Effect effect, Led led, uint32_t duration)
 			.currentTrans = 0,
 			.totalTransNum = 3,
 			.trans = {
-				{ .startTime = 0, .duration = 100, .startValue = 0, .endValue = 255 },  // Ramp up
-				{ .startTime = 100, .duration = 300, .startValue = 255, .endValue = 255 },  // Static
-				{ .startTime = 400, .duration = 100, .startValue = 255, .endValue = 0 } // Ramp down
+				{ .startTime = 0, .duration = rumpUpTime, .startValue = 0, .endValue = 255 },  // Ramp up
+				{ .startTime = 0, .duration = staticTime, .startValue = 255, .endValue = 255 },  // Static
+				{ .startTime = 0, .duration = rumpDownTime, .startValue = 255, .endValue = 0 } // Ramp down
 			}
 		};
 	} else if (EFFECT_BLINK == effect) {
@@ -172,21 +178,8 @@ static setEffect(Effect effect, Led led, uint32_t duration)
 			.currentTrans = 0,
 			.totalTransNum = 2,
 			.trans = {
-				{ .startTime = 0, .duration = 500, .startValue = 255, .endValue = 255 }, // ON
-				{ .startTime = 500, .duration = 500, .startValue = 0, .endValue = 0 } // OFF
-			}
-		};
-	} else if (EFFECT_FAST_BLINK == effect) {
-		effects[led] = (EffectSettings) {
-			.effect = EFFECT_FAST_BLINK,
-			.startTime = 0,
-			.totalDuration = duration,
-			.lastUpdateMs = 0,
-			.currentTrans = 0,
-			.totalTransNum = 2,
-			.trans = {
-				{ .startTime = 0, .duration = 125, .startValue = 255, .endValue = 255 }, // ON
-				{ .startTime = 125, .duration = 100, .startValue = 0, .endValue = 0 } // OFF
+				{ .startTime = 0, .duration = period / 2, .startValue = 255, .endValue = 255 }, // ON
+				{ .startTime = 0, .duration = period / 2, .startValue = 0, .endValue = 0 } // OFF
 			}
 		};
 	} else if (EFFECT_STATIC == effect) {
@@ -203,14 +196,14 @@ static setEffect(Effect effect, Led led, uint32_t duration)
 		};
 	}
 }
-void effectManagerPlayEffect(Effect effect, Led led, uint32_t duration)
+void effectManagerPlayEffect(Effect effect, Led led, uint32_t duration, uint32_t period)
 {
 	if (LED_ALL == led) {
 		for (int i = 0; i < LED_COUNT; i++) {
-			setEffect(effect, i, duration);
+			setEffect(effect, i, duration, period);
 		}
 	} else {
-		setEffect(effect, led, duration);
+		setEffect(effect, led, duration, period);
 	}
 }
 
@@ -273,4 +266,14 @@ void effectManagerStopAllEffects()
 	setLedPwm(LED_BLUE, 0);
 	setLedPwm(LED_YELLOW, 0);
 	setLedPwm(LED_GREEN, 0);
+}
+
+bool effectManagerIsPlaying(void)
+{
+	for (int i = 0; i < LED_COUNT; i++) {
+		if (EFFECT_NONE != effects[i].effect) {
+			return true;
+		}
+	}
+	return false;
 }

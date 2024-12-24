@@ -127,6 +127,14 @@ static const Note failMelody[] = {
     {NOTE_AS4, NOTE_DUR / 4}, {NOTE_A4, NOTE_DUR / 4}
 };
 
+#undef NOTE_DUR
+#define NOTE_DUR 100
+static const Note confirmMelody[] = {
+	{NOTE_E4, NOTE_DUR},
+	{NOTE_G4, NOTE_DUR},
+	{NOTE_C5, NOTE_DUR}
+};
+
 const Note * const getMelody(Melody melody)
 {
     switch (melody) {
@@ -138,7 +146,7 @@ const Note * const getMelody(Melody melody)
     case MelodyPowerOff: return powerOffMelody;
     case MelodySuccess: return successMelody;
     case MelodyFail: return failMelody;
-    
+    case MelodyConfirm: return confirmMelody;
     default: return JingleBells;
     }
 }
@@ -154,7 +162,7 @@ uint32_t getMelodyLength(Melody melody)
     case MelodyPowerOff: return ELEMENTS(powerOffMelody);
     case MelodySuccess: return ELEMENTS(successMelody);
     case MelodyFail: return ELEMENTS(failMelody);
-    
+    case MelodyConfirm: return ELEMENTS(confirmMelody);
     default: return 0;
     }
 }
