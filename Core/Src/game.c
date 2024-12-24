@@ -5,6 +5,8 @@
 #include "keyscan.h"
 #include "levels.h"
 #include "tim.h"
+#include "i2c.h"
+#include "oled.h"
 
 #define INPUT_TIMEOUT_MS 10000
 typedef enum {
@@ -22,6 +24,7 @@ typedef enum {
 // TODO: Add storage on flash, store current level, speed, game mode, etc
 // TODO: Add reset to defaults
 // TODO: Add random level mode
+// TODO: Add input timeout after second show level run
 
 static uint32_t lastProcessMs = 0;
 static uint32_t nextProcessMs = 0;
@@ -195,8 +198,94 @@ static void processInputTimeout()
 	}
 }
 
+static void oledTest()
+{
+	/* Draw circles */
+	OLED_DrawCircle(OLEDWIDTH / 2, OLEDHEIGHT / 2, 10, White);
+	OLED_FillCircle(OLEDWIDTH / 2, OLEDHEIGHT / 2, 4, White);
+	OLED_UpdateScreen();
+	HAL_Delay(1000);
+	/* Draw trapezoid */
+	uint8_t y = 0;
+	while (y++ < OLEDHEIGHT) {
+		OLED_DrawLine(0, y, OLEDWIDTH - y, y, White);
+	}
+	OLED_UpdateScreen();
+	HAL_Delay(1000);
+	/* Draw rectangles */
+	OLED_FillScreen(Black);
+	OLED_FillRoundRect(10, OLEDHEIGHT / 4, OLEDWIDTH - 20, OLEDHEIGHT / 2,
+			OLEDHEIGHT / 4, White);
+	OLED_FillRoundRect(20, OLEDHEIGHT / 2 - OLEDHEIGHT / 8, OLEDWIDTH - 40,
+			OLEDHEIGHT / 4, OLEDHEIGHT / 8, Black);
+	OLED_FillRoundRect(30, OLEDHEIGHT / 2 - OLEDHEIGHT / 16, OLEDWIDTH - 60,
+			OLEDHEIGHT / 8, OLEDHEIGHT / 16, White);
+	OLED_UpdateScreen();
+	HAL_Delay(1000);
+	/* Draw chessboard */
+	OLED_FillScreen(Black);
+	OLED_Color_t color = White;
+	for (int i = 0; i < OLEDHEIGHT / 4; i++) {
+		for (int j = 0; j < OLEDWIDTH / 4; j++) {
+			OLED_FillRect(4 * j, 4 * i, 4, 4, color);
+			color = !color;
+		}
+		color = !color;
+	}
+	OLED_UpdateScreen();
+	HAL_Delay(2000);
+	/* Test edges */
+	OLED_FillScreen(White);
+	OLED_FillRect(0, 0, 5, 5, Black);
+	OLED_FillRect(OLEDWIDTH - 5, 0, 5, 5, Black);
+	OLED_FillRect(0, OLEDHEIGHT - 5, 5, 5, Black);
+	OLED_FillRect(OLEDWIDTH - 5, 0, 5, 5, Black);
+	OLED_FillRect(OLEDWIDTH - 5, OLEDHEIGHT - 5, 5, 5, Black);
+	OLED_UpdateScreen();
+	color = White;
+	HAL_Delay(2000);
+	/* Draw white noise */
+	for (int a = 0; a < OLEDWIDTH; a++) {
+		for (int b = 0; b < OLEDHEIGHT; b++) {
+			OLED_DrawPixel(a, b, color);
+			color = !color;
+		}
+		color = !color;
+		OLED_UpdateScreen();
+	}
+	/* Draw numbers */
+	color = White;
+	for (int a = 0; a < OLEDWIDTH; a++) {
+		OLED_Printf("%i ", a);
+		OLED_UpdateScreen();
+	}
+	HAL_Delay(2000);
+	/* Draw text */
+	for (int i = 0; i < 5; i++) {
+		OLED_FillScreen(Black);
+		OLED_SetCursor(0, 0);
+		OLED_SetTextSize(i);
+		for (int j = 0; j < 256; j++) {
+			OLED_Printf("%c", j);
+			OLED_UpdateScreen();
+		}
+		HAL_Delay(500);
+	}
+	HAL_Delay(1000);
+	/* Toggle display on/off */
+	OLED_FillScreen(White);
+	OLED_UpdateScreen();
+	HAL_Delay(1000);
+	OLED_DisplayOff();
+	HAL_Delay(1000);
+}
+
 void gameInit()
 {
+	OLED_Init(&hi2c1);
+	OLED_FillScreen(White);
+	OLED_UpdateScreen();
+//	oledTest();
 	keyscanInit(&onKeyPressCallback);
 	notePlayerInit(&onPlaybackFinished);
 	effectManagerInit(&onEffectFinished);
