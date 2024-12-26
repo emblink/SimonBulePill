@@ -83,13 +83,21 @@ static const uint8_t SSD1306_regValues[] = {
 #if defined (USE_HORZMODE)
 		SSD1306_SETMEMORYMODE, 1, SSD1306_MEMORYMODE_HORZ,	// Set Memory Addressing Mode to Horizontal
 		SSD1306_SETCOLUMNADDR, 2, 0x00, OLEDWIDTH - 1,		// Set column address window from 0 to 127
+#if OLEDHEIGHT <= 32
+		SSD1306_SETPAGEADDR, 2, 0x04, 0x07,					// Set page address window from 4 to 7 for the 32 pixel displays
+#else
 		SSD1306_SETPAGEADDR, 2, 0x00, 0x07,					// Set page address window from 0 to 7
+#endif
 #elif defined (USE_PAGEMODE)
 		SSD1306_SETCOLUMNSTARTLOW | 0x00, 0,				// Set column start address to 0 (lower nibble)
 		SSD1306_SETCOLUMNSTARTHIGH | 0x00, 0,				// Set column start address to 0 (higher nibble)
 		SSD1306_SETPAGESTART | 0x00, 0,						// Set page start address to 0 (use | 0x07 for 7th page)
 #endif
+#if OLEDHEIGHT <= 32
+		SSD1306_SETDISPLAYSTARTLINE | 0x20, 0,				// Set page start line to 32 for the 32 pixel displays
+#else
 		SSD1306_SETDISPLAYSTARTLINE | 0x00, 0,				// Set page start line to 0 (use | 0xFF for 63rd line)
+#endif
 		SSD1306_SETSEGREMAP_127, 0,							// Set segment re-map from 0 to 127
 		SSD1306_SETDISPLAY_NORMAL, 0,						// Set normal display (not inverted)
 		SSD1306_SETMUXRATIO, 1, OLEDHEIGHT - 1,				// Set multiplex ratio (default 63)
