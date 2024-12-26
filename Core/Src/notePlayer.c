@@ -55,12 +55,12 @@ void notePlayerInit(PlaybackCompletedCb callback)
 
 static inline void ledOn()
 {
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, 0);
+	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
 }
 
 static inline void ledOff()
 {
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, 1);
+	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 1);
 }
 
 static void XferCpltCallback(DMA_HandleTypeDef *hdma)
@@ -170,7 +170,7 @@ void notePlayerPlayMelody(const Note mel[], uint32_t length)
 	melodyLen = length;
 	melodyNoteIdx = 0;
 	notePlayerPlayNote(melody[melodyNoteIdx].note, melody[melodyNoteIdx].duration);
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, 0);
+	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
 }
 
 bool notePlayerIsPlaying()

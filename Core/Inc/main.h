@@ -57,30 +57,28 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LED_Pin GPIO_PIN_13
-#define LED_GPIO_Port GPIOC
-#define LEDA2_Pin GPIO_PIN_2
-#define LEDA2_GPIO_Port GPIOA
-#define RED_LED_Pin GPIO_PIN_6
-#define RED_LED_GPIO_Port GPIOA
-#define GREEN_LED_Pin GPIO_PIN_7
-#define GREEN_LED_GPIO_Port GPIOA
-#define BLUE_LED_Pin GPIO_PIN_0
-#define BLUE_LED_GPIO_Port GPIOB
-#define YELLOW_LED_Pin GPIO_PIN_1
-#define YELLOW_LED_GPIO_Port GPIOB
-#define YELLOW_BUTTON_Pin GPIO_PIN_9
-#define YELLOW_BUTTON_GPIO_Port GPIOA
-#define YELLOW_BUTTON_EXTI_IRQn EXTI9_5_IRQn
-#define BLUE_BUTTON_Pin GPIO_PIN_10
-#define BLUE_BUTTON_GPIO_Port GPIOA
-#define BLUE_BUTTON_EXTI_IRQn EXTI15_10_IRQn
-#define GREEN_BUTTON_Pin GPIO_PIN_11
-#define GREEN_BUTTON_GPIO_Port GPIOA
-#define GREEN_BUTTON_EXTI_IRQn EXTI15_10_IRQn
-#define RED_BUTTON_Pin GPIO_PIN_12
-#define RED_BUTTON_GPIO_Port GPIOA
-#define RED_BUTTON_EXTI_IRQn EXTI15_10_IRQn
+#define LED_BOARD_Pin GPIO_PIN_13
+#define LED_BOARD_GPIO_Port GPIOC
+#define LED_RED_Pin GPIO_PIN_6
+#define LED_RED_GPIO_Port GPIOA
+#define LED_GREEN_Pin GPIO_PIN_7
+#define LED_GREEN_GPIO_Port GPIOA
+#define LED_BLUE_Pin GPIO_PIN_0
+#define LED_BLUE_GPIO_Port GPIOB
+#define LED_YELLOW_Pin GPIO_PIN_1
+#define LED_YELLOW_GPIO_Port GPIOB
+#define KEY_YELLOW_Pin GPIO_PIN_12
+#define KEY_YELLOW_GPIO_Port GPIOB
+#define KEY_YELLOW_EXTI_IRQn EXTI15_10_IRQn
+#define KEY_BLUE_Pin GPIO_PIN_13
+#define KEY_BLUE_GPIO_Port GPIOB
+#define KEY_BLUE_EXTI_IRQn EXTI15_10_IRQn
+#define KEY_GREEN_Pin GPIO_PIN_14
+#define KEY_GREEN_GPIO_Port GPIOB
+#define KEY_GREEN_EXTI_IRQn EXTI15_10_IRQn
+#define KEY_RED_Pin GPIO_PIN_15
+#define KEY_RED_GPIO_Port GPIOB
+#define KEY_RED_EXTI_IRQn EXTI15_10_IRQn
 
 /* USER CODE BEGIN Private defines */
 
