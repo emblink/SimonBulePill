@@ -9,6 +9,16 @@
 #include "oled.h"
 
 #define INPUT_TIMEOUT_MS 10000
+#define OLED_UPDATE_MS 100
+
+typedef enum {
+//	FontSize8 = 0x00,
+	FontSize12,
+	FontSize16,
+	FontSize24,
+	FontSizeCount,
+} FontSize;
+
 typedef enum {
 	GAME_STATE_INIT, // Startup animation and sound
 	GAME_STATE_IDLE, // Idle animation
@@ -77,9 +87,11 @@ static void processInput(Key key)
 		effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[key], n.duration, n.duration);
 		if (levelIdx >= currentLevel) {
 			gameState = GAME_STATE_SUCCESS;
+			nextProcessMs = 1000;
 		}
 	} else {
 		gameState = GAME_STATE_FAILED;
+		nextProcessMs = 1000;
 	}
 }
 
@@ -143,15 +155,16 @@ static void processShowLevel()
         gameState = GAME_STATE_READING_INPUTS;
     } else if (canProcess()) {
         // Show the level sequence
-    	lastProcessMs = HAL_GetTick();
-        Key key = levels[levelIdx++];
-        Note n = keyNoteMap[key];
-        notePlayerPlayNote(n.note, n.duration);
-        effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[key], n.duration, n.duration);
-        nextProcessMs = n.duration + 250;
         if (levelIdx >= currentLevel) {
         	levelIdx = 0;
         	gameState = GAME_STATE_READING_INPUTS;
+        } else {
+        	lastProcessMs = HAL_GetTick();
+            Key key = levels[levelIdx++];
+            Note n = keyNoteMap[key];
+            notePlayerPlayNote(n.note, n.duration);
+            effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[key], n.duration, n.duration);
+            nextProcessMs = n.duration + 250;
         }
     }
 }
@@ -168,7 +181,7 @@ static void processSuccess()
 		currentLevel = 1;
 	}
 	levelIdx = 0;
-	nextProcessMs = 1500;
+	nextProcessMs = 1000;
 	Keys.state = 0; // reset current keys state before show level state
 	gameState = GAME_STATE_SHOWING_LEVEL;
 }
@@ -180,7 +193,7 @@ static void processFail()
 	effectManagerPlayEffect(EFFECT_BLINK, LED_RED, 500, 500 / 4);
 	notePlayerPlayMelody(getMelody(MelodyFail), getMelodyLength(MelodyFail));
 	levelIdx = 0;
-	nextProcessMs = 1500;
+	nextProcessMs = 1000;
 	Keys.state = 0; // reset current keys state before show level state
 	gameState = GAME_STATE_SHOWING_LEVEL;
 }
@@ -280,10 +293,55 @@ static void oledTest()
 	HAL_Delay(1000);
 }
 
+void oledUpdate()
+{
+	if (GAME_STATE_OFF == gameState) {
+		OLED_DisplayOff();
+		return;
+	}
+
+	OLED_FillScreen(Black);
+	OLED_SetCursor(0, 0);
+	if (GAME_STATE_IDLE == gameState) {
+		// TODO: show cat sleep animation
+		OLED_SetTextSize(FontSize24);
+		OLED_Printf("  IDLE");
+	} else if (GAME_STATE_READING_INPUTS == gameState) {
+		OLED_SetTextSize(FontSize12);
+		OLED_Printf("Lvl:%i%i/%i%i\n", currentLevel / 10, currentLevel % 10,
+					LEVELS_COUNT/ 10, LEVELS_COUNT % 10);
+		OLED_Printf("Input:%i%i/%i%i", levelIdx / 10, levelIdx % 10,
+					currentLevel / 10, currentLevel % 10);
+	} else if (GAME_STATE_SHOWING_LEVEL == gameState) {
+		OLED_SetTextSize(FontSize12);
+		OLED_Printf("Lvl:%i%i/%i%i\n", currentLevel / 10, currentLevel % 10,
+					LEVELS_COUNT/ 10, LEVELS_COUNT % 10);
+		OLED_Printf("Showing:%i%i/%i%i", levelIdx / 10, levelIdx % 10,
+					currentLevel / 10, currentLevel % 10);
+	} else if (GAME_STATE_SUCCESS == gameState) {
+		// TODO: show happy cat
+		OLED_SetTextSize(FontSize24);
+		OLED_Printf("  SUCCESS :)");
+	} else if (GAME_STATE_FAILED == gameState) {
+		OLED_SetTextSize(FontSize24);
+		OLED_Printf("  FAIL :(");
+		// TODO: show sad cat
+	}
+
+//		OLED_SetTextSize(FontSize12);
+//		OLED_SetCursor(0, 16);
+//		OLED_Printf("Mode:Static");
+
+	OLED_UpdateScreen();
+}
+
 void gameInit()
 {
 	OLED_Init(&hi2c1);
-	OLED_FillScreen(White);
+	OLED_FillScreen(Black);
+	OLED_SetTextSize(FontSize24);
+	OLED_Printf(" SIMON!");
+	//\n    Train Your Memory
 	OLED_UpdateScreen();
 //	oledTest();
 	keyscanInit(&onKeyPressCallback);
@@ -304,4 +362,5 @@ void gameProcess()
 	default: break;
 	}
 	effectManagerProcess();
+	oledUpdate();
 }
