@@ -1,3 +1,4 @@
+#include "stdint.h"
 #include "game.h"
 #include "notePlayer.h"
 #include "effectManager.h"
@@ -8,27 +9,63 @@
 #include "i2c.h"
 #include "oled.h"
 
-#define INPUT_TIMEOUT_MS 10000
-#define OLED_UPDATE_MS 100
+// Time constants
+#define SECOND 1000
+#define MINUTE (60 * SECOND)
 
+// Timeouts and intervals
+#define INPUT_TIMEOUT_MS (10 * SECOND)
+#define LEVEL_DISPLAY_RETRIES 3
+#define POWER_OFF_TIMEOUT_MS (1 * MINUTE)
+#define OLED_REFRESH_INTERVAL_MS 100
+#define INIT_STATE_TIMEOUT_MS (1 * SECOND)
+#define SUCCESS_STATE_TIMEOUT_MS (500)
+#define FAILURE_STATE_TIMEOUT_MS (500)
+
+// Enumerations
 typedef enum {
-//	FontSize8 = 0x00,
-	FontSize12,
-	FontSize16,
-	FontSize24,
-	FontSizeCount,
+    FontSize12,
+    FontSize16,
+    FontSize24,
+    FontSizeCount,
 } FontSize;
 
 typedef enum {
-	GAME_STATE_INIT, // Startup animation and sound
-	GAME_STATE_IDLE, // Idle animation
+    GAME_STATE_INIT,          // Startup animation and sound
+    GAME_STATE_IDLE,          // Idle animation
     GAME_STATE_SHOWING_LEVEL, // Display current level (lights/sounds)
-    GAME_STATE_READING_INPUTS, // User input sequence verification
-	GAME_STATE_SUCCESS, // Success feedback (animation, sound)
-	GAME_STATE_FAILED, // Failure feedback (animation, sound)
-	GAME_STATE_OFF,
-	GAME_STATE_COUNT
+    GAME_STATE_USER_INPUT,    // User input sequence verification
+    GAME_STATE_SUCCESS,       // Success feedback (animation, sound)
+    GAME_STATE_FAILED,        // Failure feedback (animation, sound)
+    GAME_STATE_OFF,
+    GAME_STATE_COUNT
 } GameState;
+
+typedef enum {
+    EVENT_START,
+    EVENT_STATE_TIMEOUT,
+    EVENT_SEQUENCE_SHOWN,
+    EVENT_INPUT_RECEIVED,
+    EVENT_INPUT_TIMEOUT,
+    EVENT_INPUT_CORRECT,
+    EVENT_INPUT_WRONG,
+    EVENT_COUNT
+} Event;
+
+// State definitions
+typedef struct GameStateDef {
+    void (*onEnter)(void);
+    void (*onExit)(void);
+    void (*onProcess)(void);
+    uint32_t stateProcessTimeoutMs;
+} GameStateDef;
+
+// State transitions
+typedef struct {
+    GameState nextState;
+    void (*action)(void);
+    uint32_t delayMs;
+} StateTransition;
 
 // TODO: Add game 3 game speeds 1000ms, 500 ms, 250ms
 // TODO: Add storage on flash, store current level, speed, game mode, etc
@@ -76,25 +113,6 @@ static void onEffectFinished(Led led)
 	effectFinished = true;
 }
 
-static void processInput(Key key)
-{
-	lastProcessMs = HAL_GetTick();
-	Key levelKey = levels[levelIdx];
-	if (levelKey == key) {
-		levelIdx++;
-		Note n = keyNoteMap[key];
-		notePlayerPlayNote(n.note, n.duration);
-		effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[key], n.duration, n.duration);
-		if (levelIdx >= currentLevel) {
-			gameState = GAME_STATE_SUCCESS;
-			nextProcessMs = 1000;
-		}
-	} else {
-		gameState = GAME_STATE_FAILED;
-		nextProcessMs = 1000;
-	}
-}
-
 static void onKeyPressCallback(Key key, bool isPressed)
 {
 	switch (key) {
@@ -105,10 +123,7 @@ static void onKeyPressCallback(Key key, bool isPressed)
 	default: break;
 	}
 
-	if (GAME_STATE_READING_INPUTS == gameState && isPressed)
-	{
-		processInput(key);
-	}
+    processInputEvent(key, isPressed);
 }
 
 static bool canProcess()
@@ -117,13 +132,6 @@ static bool canProcess()
 	uint32_t diff = tick - lastProcessMs;
 	bool res = diff >= nextProcessMs;
 	return res;
-}
-
-static void processInit()
-{
-	notePlayerPlayMelody(getMelody(MelodyPowerOn), getMelodyLength(MelodyPowerOn));
-	effectManagerPlayPowerOn();
-	gameState = GAME_STATE_IDLE;
 }
 
 static void processIdle()
@@ -211,88 +219,6 @@ static void processInputTimeout()
 	}
 }
 
-static void oledTest()
-{
-	/* Draw circles */
-	OLED_DrawCircle(OLEDWIDTH / 2, OLEDHEIGHT / 2, 10, White);
-	OLED_FillCircle(OLEDWIDTH / 2, OLEDHEIGHT / 2, 4, White);
-	OLED_UpdateScreen();
-	HAL_Delay(1000);
-	/* Draw trapezoid */
-	uint8_t y = 0;
-	while (y++ < OLEDHEIGHT) {
-		OLED_DrawLine(0, y, OLEDWIDTH - y, y, White);
-	}
-	OLED_UpdateScreen();
-	HAL_Delay(1000);
-	/* Draw rectangles */
-	OLED_FillScreen(Black);
-	OLED_FillRoundRect(10, OLEDHEIGHT / 4, OLEDWIDTH - 20, OLEDHEIGHT / 2,
-			OLEDHEIGHT / 4, White);
-	OLED_FillRoundRect(20, OLEDHEIGHT / 2 - OLEDHEIGHT / 8, OLEDWIDTH - 40,
-			OLEDHEIGHT / 4, OLEDHEIGHT / 8, Black);
-	OLED_FillRoundRect(30, OLEDHEIGHT / 2 - OLEDHEIGHT / 16, OLEDWIDTH - 60,
-			OLEDHEIGHT / 8, OLEDHEIGHT / 16, White);
-	OLED_UpdateScreen();
-	HAL_Delay(1000);
-	/* Draw chessboard */
-	OLED_FillScreen(Black);
-	OLED_Color_t color = White;
-	for (int i = 0; i < OLEDHEIGHT / 4; i++) {
-		for (int j = 0; j < OLEDWIDTH / 4; j++) {
-			OLED_FillRect(4 * j, 4 * i, 4, 4, color);
-			color = !color;
-		}
-		color = !color;
-	}
-	OLED_UpdateScreen();
-	HAL_Delay(2000);
-	/* Test edges */
-	OLED_FillScreen(White);
-	OLED_FillRect(0, 0, 5, 5, Black);
-	OLED_FillRect(OLEDWIDTH - 5, 0, 5, 5, Black);
-	OLED_FillRect(0, OLEDHEIGHT - 5, 5, 5, Black);
-	OLED_FillRect(OLEDWIDTH - 5, 0, 5, 5, Black);
-	OLED_FillRect(OLEDWIDTH - 5, OLEDHEIGHT - 5, 5, 5, Black);
-	OLED_UpdateScreen();
-	color = White;
-	HAL_Delay(2000);
-	/* Draw white noise */
-	for (int a = 0; a < OLEDWIDTH; a++) {
-		for (int b = 0; b < OLEDHEIGHT; b++) {
-			OLED_DrawPixel(a, b, color);
-			color = !color;
-		}
-		color = !color;
-		OLED_UpdateScreen();
-	}
-	/* Draw numbers */
-	color = White;
-	for (int a = 0; a < OLEDWIDTH; a++) {
-		OLED_Printf("%i ", a);
-		OLED_UpdateScreen();
-	}
-	HAL_Delay(2000);
-	/* Draw text */
-	for (int i = 0; i < 5; i++) {
-		OLED_FillScreen(Black);
-		OLED_SetCursor(0, 0);
-		OLED_SetTextSize(i);
-		for (int j = 0; j < 256; j++) {
-			OLED_Printf("%c", j);
-			OLED_UpdateScreen();
-		}
-		HAL_Delay(500);
-	}
-	HAL_Delay(1000);
-	/* Toggle display on/off */
-	OLED_FillScreen(White);
-	OLED_UpdateScreen();
-	HAL_Delay(1000);
-	OLED_DisplayOff();
-	HAL_Delay(1000);
-}
-
 void oledUpdate()
 {
 	if (GAME_STATE_OFF == gameState) {
@@ -335,27 +261,161 @@ void oledUpdate()
 	OLED_UpdateScreen();
 }
 
-void gameInit()
+static void stateInitEnter()
 {
-	OLED_Init(&hi2c1);
-	OLED_FillScreen(Black);
-	OLED_SetTextSize(FontSize24);
-	OLED_Printf(" SIMON!");
-	//\n    Train Your Memory
-	OLED_UpdateScreen();
-//	oledTest();
-	keyscanInit(&onKeyPressCallback);
-	notePlayerInit(&onPlaybackFinished);
-	effectManagerInit(&onEffectFinished);
+    OLED_Init(&hi2c1);
+    OLED_FillScreen(Black);
+    OLED_SetTextSize(FontSize24);
+    OLED_Printf(" SIMON!");
+    OLED_UpdateScreen();
+    keyscanInit(&onKeyPressCallback);
+    notePlayerInit(&onPlaybackFinished);
+    effectManagerInit(&onEffectFinished);
+    notePlayerPlayMelody(getMelody(MelodyPowerOn), getMelodyLength(MelodyPowerOn));
+	effectManagerPlayPowerOn();
+	gameState = GAME_STATE_IDLE;
 }
 
-void gameProcess()
+static void stateInitProcess()
 {
-	switch (gameState) {
+
+}
+
+static void stateIdleEnter()
+{
+
+}
+
+static void stateIdleProcess()
+{
+
+}
+
+static void stateShowLevelEnter()
+{
+
+}
+
+static void stateShowLevelProcess()
+{
+
+}
+
+static void stateUserInputEnter()
+{
+
+}
+
+static void stateUserInputProcess()
+{
+
+}
+
+static void stateSuccessEnter()
+{
+
+}
+
+static void stateFailEnter()
+{
+
+}
+
+static void statePowerOffEnter()
+{
+
+}
+
+static processEventSequenceCanceled()
+{
+
+}
+
+// State definition table
+static const GameStateDef stateDefs[] = {
+    [GAME_STATE_INIT]          = {stateInitEnter, NULL, NULL, INIT_STATE_TIMEOUT_MS},
+    [GAME_STATE_IDLE]          = {stateIdleEnter, NULL, stateIdleProcess, POWER_OFF_TIMEOUT_MS},
+    [GAME_STATE_SHOWING_LEVEL] = {stateShowLevelEnter, NULL, stateShowLevelProcess, 0},
+    [GAME_STATE_USER_INPUT]    = {stateUserInputEnter, NULL, stateUserInputProcess, INPUT_TIMEOUT_MS},
+    [GAME_STATE_SUCCESS]       = {stateSuccessEnter, NULL, NULL, SUCCESS_STATE_TIMEOUT_MS},
+    [GAME_STATE_FAILED]        = {stateFailEnter, NULL, NULL, FAILURE_STATE_TIMEOUT_MS},
+    [GAME_STATE_OFF]           = {statePowerOffEnter, NULL, NULL, 0},
+};
+
+// State transition table
+static const StateTransition stateTransitionTable[GAME_STATE_COUNT][EVENT_COUNT] = {
+    [GAME_STATE_INIT] = {
+        [EVENT_START] = { GAME_STATE_SHOWING_LEVEL, NULL, 0 },
+    },
+    [GAME_STATE_IDLE] = {
+        [EVENT_INPUT_RECEIVED] = { GAME_STATE_SHOWING_LEVEL, NULL, 300 },
+        [EVENT_STATE_TIMEOUT] = { GAME_STATE_OFF, NULL, 500 },
+    },
+    [GAME_STATE_SHOWING_LEVEL] = {
+        [EVENT_SEQUENCE_SHOWN] = { GAME_STATE_USER_INPUT, NULL, 0 },
+        [EVENT_SEQUENCE_CANCELED] = { GAME_STATE_USER_INPUT, NULL, 0 },
+    },
+    [GAME_STATE_USER_INPUT] = {
+        [EVENT_INPUT_TIMEOUT] = { GAME_STATE_IDLE, NULL, 0 },
+        [EVENT_INPUT_CORRECT] = { GAME_STATE_SUCCESS, NULL, 0 },
+        [EVENT_INPUT_WRONG] = { GAME_STATE_FAILED, NULL, 0 },
+    },
+    [GAME_STATE_SUCCESS] = {
+        [EVENT_STATE_TIMEOUT] = { GAME_STATE_SHOWING_LEVEL, NULL, SUCCESS_STATE_TIMEOUT_MS },
+    },
+    [GAME_STATE_FAILED] = {
+        [EVENT_STATE_TIMEOUT] = { GAME_STATE_SHOWING_LEVEL, NULL, FAILURE_STATE_TIMEOUT_MS },
+    },
+    [GAME_STATE_OFF] = {},
+};
+
+static void changeState(GameState state, uint32_t delay)
+{
+	gameState = state;
+	lastProcessMs = HAL_GetTick();
+	nextProcessMs = 0;
+}
+
+static void processEvent()
+{
+
+}
+
+void processUserInput(Key key, bool isPressed)
+{
+    if (!isPressed) {
+        return;
+    }
+
+    if (GAME_STATE_USER_INPUT == gameState)
+    {
+        Key levelKey = levels[levelIdx];
+        if (levelKey == key) {
+            levelIdx++;
+            Note n = keyNoteMap[key];
+            notePlayerPlayNote(n.note, n.duration);
+            effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[key], n.duration, n.duration);
+            if (levelIdx >= currentLevel) {
+                gameState = GAME_STATE_SUCCESS;
+                nextProcessMs = 1000;
+            }
+        } else {
+            changeState(GAME_STATE_FAILED, 0);
+            gameState = GAME_STATE_FAILED;
+            nextProcessMs = 1000;
+        }
+    } else if (GAME_STATE_SHOWING_LEVEL == gameState) {
+        processEventSequenceCanceled();
+    }
+}
+
+static void processState()
+{
+    switch (gameState) {
 	case GAME_STATE_INIT: processInit(); break;
 	case GAME_STATE_IDLE: processIdle(); break;
 	case GAME_STATE_SHOWING_LEVEL: processShowLevel(); break;
-	case GAME_STATE_READING_INPUTS: processInputTimeout(); break;
+	case GAME_STATE_USER_INPUTS: processInputTimeout(); break;
 	case GAME_STATE_SUCCESS: processSuccess(); break;
 	case GAME_STATE_FAILED: processFail(); break;
 
@@ -363,4 +423,14 @@ void gameProcess()
 	}
 	effectManagerProcess();
 	oledUpdate();
+}
+
+void gameInit()
+{
+    changeState(GAME_STATE_INIT, 0);
+}
+
+void gameProcess()
+{
+    processState();
 }
