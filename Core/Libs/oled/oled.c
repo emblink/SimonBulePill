@@ -32,6 +32,7 @@
  */
 
 #include "oled.h"
+#include <stdio.h>
 
 static int16_t m_width;
 static int16_t m_height;
