@@ -9,15 +9,16 @@ static const StateTransition stateTransitionTable[GAME_STATE_COUNT][EVENT_COUNT]
         [EVENT_STATE_TIMEOUT] = { GAME_STATE_IDLE, NULL, 0 },
     },
     [GAME_STATE_IDLE] = {
-        [EVENT_INPUT_RECEIVED] = { GAME_STATE_SHOWING_LEVEL, NULL, 300 },
-        [EVENT_STATE_TIMEOUT] = { GAME_STATE_OFF, NULL, 300 },
+        [EVENT_INPUT_RECEIVED] = { GAME_STATE_SHOWING_LEVEL, NULL, 750 },
+        [EVENT_STATE_TIMEOUT] = { GAME_STATE_OFF, NULL, 0 },
     },
     [GAME_STATE_SHOWING_LEVEL] = {
         [EVENT_SEQUENCE_SHOWN] = { GAME_STATE_USER_INPUT, NULL, 0 },
         [EVENT_SEQUENCE_CANCELED] = { GAME_STATE_USER_INPUT, NULL, 0 },
     },
     [GAME_STATE_USER_INPUT] = {
-        [EVENT_INPUT_TIMEOUT] = { GAME_STATE_IDLE, NULL, 0 },
+        [EVENT_INPUT_TIMEOUT] = { GAME_STATE_SHOWING_LEVEL, NULL, 0 },
+    	[EVENT_STATE_TIMEOUT] = { GAME_STATE_IDLE, NULL, 0 },
         [EVENT_INPUT_CORRECT] = { GAME_STATE_SUCCESS, NULL, 0 },
         [EVENT_INPUT_WRONG] = { GAME_STATE_FAILED, NULL, 0 },
     },
@@ -27,7 +28,9 @@ static const StateTransition stateTransitionTable[GAME_STATE_COUNT][EVENT_COUNT]
     [GAME_STATE_FAILED] = {
         [EVENT_STATE_TIMEOUT] = { GAME_STATE_SHOWING_LEVEL, NULL, 0 },
     },
-    [GAME_STATE_OFF] = {},
+    [GAME_STATE_OFF] = {
+        [EVENT_INPUT_RECEIVED] = { GAME_STATE_SHOWING_LEVEL, NULL, 500 },
+    },
 };
 
 const StateTransition * const gameStateGetTransition(GameState state, Event event)

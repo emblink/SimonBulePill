@@ -58,5 +58,13 @@ void keyscanProcess()
 	processCounter--;
 }
 
+void keyscanDisableIrq()
+{
+    // Disable SysTick interrupt (the keyscan happens there)
+    SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
+}
 
-
+void keyscanEnableIrq()
+{
+    SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+}

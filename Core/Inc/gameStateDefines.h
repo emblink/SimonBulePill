@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 typedef enum {
-	GAME_STATE_NONE,
+    GAME_STATE_NONE,
     GAME_STATE_TRANSITION,
     GAME_STATE_INIT,          // Startup animation and sound
     GAME_STATE_IDLE,          // Idle animation
@@ -16,7 +16,7 @@ typedef enum {
 
 typedef enum {
     EVENT_START,
-	EVENT_INITED,
+    EVENT_INITED,
     EVENT_STATE_TIMEOUT,
     EVENT_SEQUENCE_SHOWN,
     EVENT_SEQUENCE_CANCELED,
