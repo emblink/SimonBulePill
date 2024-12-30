@@ -70,7 +70,7 @@ void levelsGenerateRandomLevel(LevelNumber levelNum)
     srand(HAL_GetTick());
     uint32_t keyCount = staticLevels[levelNum].keyCount;
     for (int i = 0; i < keyCount; i++) {
-        levelRandomSequence[i] = rand() % KEY_COUNT;
+        levelRandomSequence[i] = rand() % KEY_MENU;
     }
     levelRandom.keyCount = keyCount;
 }

@@ -60,8 +60,10 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(LED_BOARD_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : KEY_YELLOW_Pin KEY_BLUE_Pin KEY_GREEN_Pin KEY_RED_Pin */
-  GPIO_InitStruct.Pin = KEY_YELLOW_Pin|KEY_BLUE_Pin|KEY_GREEN_Pin|KEY_RED_Pin;
+  /*Configure GPIO pins : KEY_MENU_Pin KEY_YELLOW_Pin KEY_BLUE_Pin KEY_GREEN_Pin
+                           KEY_RED_Pin */
+  GPIO_InitStruct.Pin = KEY_MENU_Pin|KEY_YELLOW_Pin|KEY_BLUE_Pin|KEY_GREEN_Pin
+                          |KEY_RED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);

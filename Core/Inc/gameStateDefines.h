@@ -11,6 +11,7 @@ typedef enum {
     GAME_STATE_SUCCESS,       // Success feedback (animation, sound)
     GAME_STATE_FAILED,        // Failure feedback (animation, sound)
     GAME_STATE_OFF,
+    GAME_STATE_MENU,
     GAME_STATE_COUNT
 } GameState;
 
@@ -24,6 +25,7 @@ typedef enum {
     EVENT_INPUT_TIMEOUT,
     EVENT_INPUT_CORRECT,
     EVENT_INPUT_WRONG,
+    EVENT_INPUT_MENU,
     EVENT_COUNT
 } Event;
 

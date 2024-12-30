@@ -23,6 +23,7 @@
 #define INIT_STATE_TIMEOUT_MS (1 * SECOND)
 #define SUCCESS_STATE_TIMEOUT_MS (750)
 #define FAILURE_STATE_TIMEOUT_MS (750)
+#define MENU_TIMEOUT_MS (1 * MINUTE)
 
 // Enumerations
 typedef enum {
@@ -38,16 +39,22 @@ typedef union {
         uint8_t green : 1;
         uint8_t blue : 1;
         uint8_t yellow : 1;
+        uint8_t menu : 1;
     };
     uint32_t state;
 } Keys;
 
-// TODO: Add game 3 game speeds 1000ms, 500 ms, 250ms
-// TODO: Add reset to defaults
-// TODO: Add random level mode
-// TODO: Add input timeout after second show level run
+// TODO: Add a menu button handling
+// TODO: Add a in game menu state with settings
+// TODO: Add 1 min timeut for the menu state with idle transition
+// TODO: Add level, speed, mode, sequence, reset to defaults menu list
+// TODO: Add apply or exit option with green or red button
 
-// State transition table
+// TODO: Add game 3 game speeds 1000ms, 500 ms, 250ms
+// TODO: Add a game mode single player, player vs player
+
+// TODO: Refactor, put all global variables to a struct
+
 static uint32_t lastProcessMs = 0;
 static uint32_t currentLevelNum = LEVEL_1;
 static const Level * currentLevel = {0};
@@ -88,6 +95,7 @@ static void onKeyPressCallback(Key key, bool isPressed)
     case KEY_GREEN: input.green = isPressed; break;
     case KEY_BLUE: input.blue = isPressed; break;
     case KEY_YELLOW: input.yellow = isPressed; break;
+    case KEY_MENU: input.menu = isPressed; break;
     default: break;
     }
 }
@@ -148,6 +156,11 @@ static void stateIdleProcess()
         gameStateProcessEvent(EVENT_INPUT_RECEIVED);
         retries = 0;
     }
+
+    if (input.menu) {
+        gameStateProcessEvent(EVENT_INPUT_MENU);
+        return;
+    }
 }
 
 static void oledShowSequence(const char stateStr[])
@@ -186,10 +199,14 @@ static void stateShowLevelExit()
 
 static void stateShowLevelProcess()
 {
+    if (input.menu) {
+        gameStateProcessEvent(EVENT_INPUT_MENU);
+        return;
+    }
+
     if (input.state) {
         retries = 0;
         gameStateProcessEvent(EVENT_SEQUENCE_CANCELED);
-        notePlayerPlayMelody(getMelody(MelodyConfirm), getMelodyLength(MelodyConfirm));
         return;
     }
 
@@ -220,6 +237,11 @@ static void stateUserInputEnter()
 
 static void stateUserInputProcess()
 {
+    if (input.menu) {
+        gameStateProcessEvent(EVENT_INPUT_MENU);
+        return;
+    }
+
     if (isTimeoutHappened(USER_INPUT_TIMEOUT_MS)) {
         retries++;
         if (retries >= LEVEL_SHOW_RETRIES) {
@@ -336,6 +358,68 @@ static void statePowerOffProcess()
     }
 }
 
+static int32_t currentMenuIdx = 0;
+static void stateMenuEnter()
+{
+    lastProcessMs = HAL_GetTick();
+    input.state = 0;
+    currentMenuIdx = 0;
+    OLED_FillScreen(Black);
+    OLED_SetCursor(0, 0);
+    OLED_SetTextSize(FontSize24);
+    OLED_Printf(" MENU");
+    OLED_UpdateScreen();
+}
+
+static void stateMenuExit()
+{
+
+}
+
+static void updateMenu(int32_t action)
+{
+    static const char * menuItems[] = {
+        "Level",
+        "Speed",
+        "Mode",
+        "Sequence",
+        "Reset",
+        "Apply",
+        "Exit",
+    };
+    OLED_FillScreen(Black);
+    OLED_SetCursor(0, 0);
+    OLED_SetTextSize(FontSize24);
+    OLED_Printf(" MENU");
+    OLED_UpdateScreen();
+}
+
+static void stateMenuProcess()
+{
+    if (0 == currentMenuIdx) {
+        updateMenu(1);
+    }
+
+    if (0 == input.state) {
+        return;
+    }
+
+    lastProcessMs = HAL_GetTick();
+    // Critical section to avoid concurrent access to the input variable
+    keyscanDisableIrq();
+    Keys userInput = input; // copy state, should be atomic operation
+    input.state &= ~userInput.state; // reset input state bits
+    keyscanEnableIrq();
+
+    if (userInput.blue) {
+        updateMenu(1);
+    } else if (userInput.yellow) {
+        updateMenu(-1);
+    } else if (userInput.green) {
+        updateMenu(2);
+    }
+}
+
 static void processStateTimeout()
 {
     uint32_t stateTimeoutMs = gameStateGetTimeout();
@@ -356,6 +440,7 @@ void gameInit()
         [GAME_STATE_SUCCESS]       = {stateSuccessEnter, stateSuccessProcess, NULL, SUCCESS_STATE_TIMEOUT_MS},
         [GAME_STATE_FAILED]        = {stateFailEnter, stateFailProcess, NULL, FAILURE_STATE_TIMEOUT_MS},
         [GAME_STATE_OFF]           = {statePowerOffEnter, NULL, statePowerOffProcess, 0},
+        [GAME_STATE_MENU]          = {stateMenuEnter, stateMenuExit, stateMenuProcess, MENU_TIMEOUT_MS},
     };
     gameStateInit(stateDefs);
     gameStateProcessEvent(EVENT_START);

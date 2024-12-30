@@ -178,3 +178,12 @@ bool notePlayerIsPlaying()
 //	return melody != NULL;
 	return PWM_TIMER->CR1 & TIM_CR1_CEN_Msk;
 }
+
+void notePlayerStop()
+{
+	melody = NULL;
+	melodyLen = 0;
+	melodyNoteIdx = 0;
+	HAL_TIM_OC_Stop_IT(&NOTE_TIMER_HANDLE, TIM_CHANNEL_1);
+	stopPWM();
+}
