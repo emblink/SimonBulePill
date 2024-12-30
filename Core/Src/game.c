@@ -10,6 +10,8 @@
 #include "oled.h"
 #include "gameState.h"
 #include "gameDataStorage.h"
+#include "fontSize.h"
+#include "gameMenu.h"
 
 // Time constants
 #define SECOND 1000
@@ -24,14 +26,6 @@
 #define SUCCESS_STATE_TIMEOUT_MS (750)
 #define FAILURE_STATE_TIMEOUT_MS (750)
 #define MENU_TIMEOUT_MS (1 * MINUTE)
-
-// Enumerations
-typedef enum {
-    FontSize12,
-    FontSize16,
-    FontSize24,
-    FontSizeCount,
-} FontSize;
 
 typedef union {
     struct {
@@ -358,47 +352,21 @@ static void statePowerOffProcess()
     }
 }
 
-static int32_t currentMenuIdx = 0;
 static void stateMenuEnter()
 {
     lastProcessMs = HAL_GetTick();
     input.state = 0;
-    currentMenuIdx = 0;
-    OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize24);
-    OLED_Printf(" MENU");
-    OLED_UpdateScreen();
+    gameMenuInit();
 }
 
 static void stateMenuExit()
 {
-
-}
-
-static void updateMenu(int32_t action)
-{
-    static const char * menuItems[] = {
-        "Level",
-        "Speed",
-        "Mode",
-        "Sequence",
-        "Reset",
-        "Apply",
-        "Exit",
-    };
-    OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize24);
-    OLED_Printf(" MENU");
-    OLED_UpdateScreen();
+    gameMenuExit();
 }
 
 static void stateMenuProcess()
 {
-    if (0 == currentMenuIdx) {
-        updateMenu(1);
-    }
+    gameMenuProcess();
 
     if (0 == input.state) {
         return;
@@ -411,12 +379,16 @@ static void stateMenuProcess()
     input.state &= ~userInput.state; // reset input state bits
     keyscanEnableIrq();
 
-    if (userInput.blue) {
-        updateMenu(1);
-    } else if (userInput.yellow) {
-        updateMenu(-1);
+    if (userInput.red) {
+        gameMenuProcessAction(MENU_ACTION_UP);
     } else if (userInput.green) {
-        updateMenu(2);
+        gameMenuProcessAction(MENU_ACTION_SELECT);
+    } else if (userInput.blue) {
+        gameMenuProcessAction(MENU_ACTION_DOWN);
+    } else if (userInput.yellow) {
+        gameMenuProcessAction(MENU_ACTION_BACK);
+    } else if (userInput.menu) {
+        gameMenuProcessAction(MENU_ACTION_MENU);
     }
 }
 
