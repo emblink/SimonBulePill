@@ -9,6 +9,7 @@
 #include "i2c.h"
 #include "oled.h"
 #include "gameState.h"
+#include "gameDataStorage.h"
 
 // Time constants
 #define SECOND 1000
@@ -42,18 +43,19 @@ typedef union {
 } Keys;
 
 // TODO: Add game 3 game speeds 1000ms, 500 ms, 250ms
-// TODO: Add storage on flash, store current level, speed, game mode, etc
 // TODO: Add reset to defaults
 // TODO: Add random level mode
 // TODO: Add input timeout after second show level run
 
 // State transition table
 static uint32_t lastProcessMs = 0;
-static uint32_t currentLevel = 1;
+static uint32_t currentLevelNum = LEVEL_1;
+static const Level * currentLevel = {0};
+static uint32_t currentLevelSeqIdx = 1;
 static uint32_t levelIdx = 0;
-static GameState volatile gameState = GAME_STATE_INIT;
 static volatile Keys input = {0};
 static uint32_t retries = 0;
+static GameSettings settings = {0};
 
 static const Note keyNoteMap[] = {
     [KEY_RED] = { NOTE_C4, 800 },
@@ -108,6 +110,10 @@ static void stateInitEnter()
     OLED_SetTextSize(FontSize24);
     OLED_Printf(" SIMON!");
     OLED_UpdateScreen();
+    if (!gameDataStorageRead(&settings)) {
+        gameDataStorageReset();
+        gameDataStorageRead(&settings);
+    }
     keyscanInit(&onKeyPressCallback);
     notePlayerInit(&onPlaybackFinished);
     effectManagerInit(&onEffectFinished);
@@ -149,10 +155,10 @@ static void oledShowSequence(const char stateStr[])
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize12);
-    OLED_Printf("Lvl:%i%i/%i%i\n", currentLevel / 10, currentLevel % 10,
-                LEVELS_COUNT / 10, LEVELS_COUNT % 10);
+    OLED_Printf("Lvl:%i%i/%i%i\n", (currentLevelNum + 1) / 10, (currentLevelNum + 1) % 10,
+                LEVEL_COUNT / 10, LEVEL_COUNT % 10);
     OLED_Printf("%s:%i%i/%i%i", stateStr, levelIdx / 10, levelIdx % 10,
-                currentLevel / 10, currentLevel % 10);
+                currentLevelSeqIdx / 10, currentLevelSeqIdx % 10);
     OLED_UpdateScreen();
 }
 
@@ -161,6 +167,12 @@ static void stateShowLevelEnter()
     lastProcessMs = HAL_GetTick();
     effectManagerStopAllEffects();
     levelIdx = 0;
+    if (GAME_SEQUENCE_STATIC == settings.sequence) {
+        currentLevel = levelsGetStaticLevel(currentLevelNum);
+    } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
+        levelsGenerateRandomLevel(currentLevelNum);
+        currentLevel = levelsGetRandomLevel(currentLevelNum);
+    }
     oledShowSequence("Showing");
 }
 
@@ -175,7 +187,9 @@ static void stateShowLevelExit()
 static void stateShowLevelProcess()
 {
     if (input.state) {
+        retries = 0;
         gameStateProcessEvent(EVENT_SEQUENCE_CANCELED);
+        notePlayerPlayMelody(getMelody(MelodyConfirm), getMelodyLength(MelodyConfirm));
         return;
     }
 
@@ -183,11 +197,11 @@ static void stateShowLevelProcess()
         return;
     }
 
-    if (levelIdx >= currentLevel) {
+    if (levelIdx >= currentLevelSeqIdx) {
         gameStateProcessEvent(EVENT_SEQUENCE_SHOWN);
     } else {
         // Show the level sequence
-        Key key = levels[levelIdx++];
+        Key key = currentLevel->sequence[levelIdx++];
         oledShowSequence("Showing");
         Note n = keyNoteMap[key];
         notePlayerPlayNote(n.note, n.duration);
@@ -210,6 +224,7 @@ static void stateUserInputProcess()
         retries++;
         if (retries >= LEVEL_SHOW_RETRIES) {
             gameStateProcessEvent(EVENT_STATE_TIMEOUT);
+            // TODO: add short idle sound
         } else {
             gameStateProcessEvent(EVENT_INPUT_TIMEOUT);
         }
@@ -228,14 +243,14 @@ static void stateUserInputProcess()
     Keys userInput = input; // copy state, should be atomic operation
     input.state &= ~userInput.state; // reset input state bits
     keyscanEnableIrq();
-    const Key levelKey = levels[levelIdx];
+    const Key levelKey = currentLevel->sequence[levelIdx];
     if (userInput.state & (1 << levelKey)) {
         levelIdx++;
         oledShowSequence("Input");
         Note n = keyNoteMap[levelKey];
         notePlayerPlayNote(n.note, n.duration);
         effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[levelKey], n.duration, n.duration);
-        if (levelIdx >= currentLevel) {
+        if (levelIdx >= currentLevelSeqIdx) {
             gameStateProcessEvent(EVENT_INPUT_CORRECT);
         }
     } else {
@@ -250,10 +265,18 @@ static void stateSuccessEnter()
     effectManagerStopAllEffects();
     effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 500, 500 / 4);
     notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
-    currentLevel++;
-    if (currentLevel >= LEVELS_COUNT) {
-        // TODO: indicate
-        currentLevel = 1;
+    currentLevelSeqIdx++;
+    if (currentLevelSeqIdx > currentLevel->keyCount) {
+        currentLevelNum = (currentLevelNum + 1) % LEVEL_COUNT;
+        if (GAME_SEQUENCE_STATIC == settings.sequence) {
+            currentLevel = levelsGetStaticLevel(currentLevelNum);
+        } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
+            levelsGenerateRandomLevel(currentLevelNum);
+            currentLevel = levelsGetRandomLevel(currentLevelNum);
+        }
+        currentLevelSeqIdx = 1;
+        settings.level = currentLevelNum;
+        gameDataStorageWrite(&settings);
     }
     levelIdx = 0;
 

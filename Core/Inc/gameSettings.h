@@ -10,7 +10,6 @@ typedef enum {
 typedef enum {
     GAME_MODE_SINGLE = 1U,
     GAME_MODE_PVP,
-    GAME_MODE_RANDOM_LEVEL,
     GAME_MODE_COUNT
 } GameMode;
 
@@ -27,6 +26,9 @@ typedef struct {
     uint8_t speed;
     uint8_t mode;
     uint8_t sequence;
-    uint8_t checksum;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    uint8_t reserved3;
+    uint32_t checksum;
 } GameSettings;
 #pragma pack(pop)

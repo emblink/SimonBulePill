@@ -1,7 +1,20 @@
 #pragma once
 #include "keys.h"
 
-#define LEVELS_COUNT 30
-#define PAUSE_BETWEEN_KEYS_MS (350)
+typedef enum {
+    LEVEL_1,
+    LEVEL_2,
+    LEVEL_3,
+    LEVEL_4,
+    LEVEL_5,
+    LEVEL_COUNT,
+} LevelNumber;
 
-extern const Key levels[LEVELS_COUNT];
+typedef struct {
+    const Key * const sequence;
+    uint32_t keyCount;
+} Level;
+
+const Level * levelsGetStaticLevel(LevelNumber levelNum);
+const Level * levelsGetRandomLevel();
+void levelsGenerateRandomLevel(LevelNumber levelNum);
