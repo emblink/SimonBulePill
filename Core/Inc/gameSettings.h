@@ -1,4 +1,6 @@
 #pragma once
+#include <stdbool.h>
+#include <stdint.h>
 
 typedef enum {
     GAME_SPEED_SLOW = 1U,
@@ -32,3 +34,7 @@ typedef struct {
     uint32_t checksum;
 } GameSettings;
 #pragma pack(pop)
+
+bool gameSettingsRead(GameSettings *settings);
+bool gameSettingsWrite(GameSettings *settings);
+void gameSettingsReset();

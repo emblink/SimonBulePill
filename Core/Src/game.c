@@ -9,7 +9,7 @@
 #include "i2c.h"
 #include "oled.h"
 #include "gameState.h"
-#include "gameDataStorage.h"
+#include "gameSettings.h"
 #include "fontSize.h"
 #include "gameMenu.h"
 
@@ -112,9 +112,9 @@ static void stateInitEnter()
     OLED_SetTextSize(FontSize24);
     OLED_Printf(" SIMON!");
     OLED_UpdateScreen();
-    if (!gameDataStorageRead(&settings)) {
-        gameDataStorageReset();
-        gameDataStorageRead(&settings);
+    if (!gameSettingsRead(&settings)) {
+        gameSettingsReset();
+        gameSettingsRead(&settings);
     }
     keyscanInit(&onKeyPressCallback);
     notePlayerInit(&onPlaybackFinished);
@@ -291,8 +291,9 @@ static void stateSuccessEnter()
             currentLevel = levelsGetRandomLevel(currentLevelNum);
         }
         currentLevelSeqIdx = 1;
+        gameSettingsRead(&settings);
         settings.level = currentLevelNum;
-        gameDataStorageWrite(&settings);
+        gameSettingsWrite(&settings);
     }
     levelIdx = 0;
 
@@ -361,14 +362,13 @@ static void stateMenuEnter()
 
 static void stateMenuExit()
 {
-    gameMenuExit();
+    gameSettingsRead(&settings);
 }
 
 static void stateMenuProcess()
 {
-    gameMenuProcess();
-
     if (0 == input.state) {
+        gameMenuProcess();
         return;
     }
 
@@ -379,13 +379,13 @@ static void stateMenuProcess()
     input.state &= ~userInput.state; // reset input state bits
     keyscanEnableIrq();
 
-    if (userInput.red) {
+    if (userInput.blue) {
         gameMenuProcessAction(MENU_ACTION_UP);
+    } else if (userInput.yellow) {
+        gameMenuProcessAction(MENU_ACTION_DOWN);
     } else if (userInput.green) {
         gameMenuProcessAction(MENU_ACTION_SELECT);
-    } else if (userInput.blue) {
-        gameMenuProcessAction(MENU_ACTION_DOWN);
-    } else if (userInput.yellow) {
+    } else if (userInput.red) {
         gameMenuProcessAction(MENU_ACTION_BACK);
     } else if (userInput.menu) {
         gameMenuProcessAction(MENU_ACTION_MENU);
