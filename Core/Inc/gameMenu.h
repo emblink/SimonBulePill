@@ -12,4 +12,3 @@ typedef enum {
 void gameMenuInit(void);
 void gameMenuProcessAction(MenuAction action);
 void gameMenuProcess(void);
-void gameMenuExit(void);
