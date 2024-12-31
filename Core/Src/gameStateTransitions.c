@@ -34,6 +34,10 @@ static const StateTransition stateTransitionTable[GAME_STATE_COUNT][EVENT_COUNT]
     [GAME_STATE_OFF] = {
         [EVENT_INPUT_RECEIVED] = { GAME_STATE_SHOWING_LEVEL, NULL, 500 },
     },
+    [GAME_STATE_MENU] = {
+        [EVENT_MENU_EXIT] = { GAME_STATE_SHOWING_LEVEL, NULL, 250 },
+        [EVENT_STATE_TIMEOUT] = { GAME_STATE_IDLE, NULL, 0 },
+    },
 };
 
 const StateTransition * const gameStateGetTransition(GameState state, Event event)

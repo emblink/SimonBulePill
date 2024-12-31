@@ -2,6 +2,9 @@
 #include "fontSize.h"
 #include "oled.h"
 #include "gameSettings.h"
+#include "levels.h"
+#include "gameStateDefines.h"
+#include "gameState.h"
 
 #define MENU_UPDATE_INTERVAL_MS 100
 typedef enum {
@@ -10,37 +13,80 @@ typedef enum {
     MENU_ITEM_MODE,
     MENU_ITEM_SEQUENCE,
     MENU_ITEM_RESET,
-    MENU_ITEM_APPLY,
+    MENU_ITEM_SAVE_AND_EXIT,
     MENU_ITEM_EXIT,
     MENU_ITEM_COUNT
 } MenuIntem;
 
-static uint32_t lastUpdateMs = 0;
-static GameSettings settings = {0};
-static int currentItem = MENU_ITEM_LEVEL;
 static const char * menuItems[] = {
     [MENU_ITEM_LEVEL] = "Level",
     [MENU_ITEM_SPEED] = "Speed",
     [MENU_ITEM_MODE] = "Mode",
     [MENU_ITEM_SEQUENCE] = "Sequence",
-    [MENU_ITEM_RESET] = "Reset",
-    [MENU_ITEM_APPLY] = "Apply",
+    [MENU_ITEM_RESET] = "Reset To\r\nDefaults",
+    [MENU_ITEM_SAVE_AND_EXIT] = "Save And\r\nExit",
     [MENU_ITEM_EXIT] = "Exit",
 };
 
-static uint8_t menuItemGetValue(MenuIntem item)
+static const char * speedToStr[] = {
+    [GAME_SPEED_SLOW] = "Slow",
+    [GAME_SPEED_MEDIUM] = "Medium",
+    [GAME_SPEED_HIGH] = "High",
+};
+
+static const char * modeToStr[] = {
+    [GAME_MODE_SINGLE] = "Single",
+    [GAME_MODE_PVP] = "1v1",
+};
+
+static const char * sequenceToStr[] = {
+    [GAME_SEQUENCE_STATIC] = "Static",
+    [GAME_SEQUENCE_RANDOM] = "Random",
+};
+
+static const char * levelToStr[] = {
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+};
+
+static uint32_t lastUpdateMs = 0;
+static GameSettings settings = {0};
+static int currentItem = MENU_ITEM_LEVEL;
+static bool isItemSelected = false;
+
+static uint8_t settingsGetValue(MenuIntem item)
 {
     switch (item) {
+    case MENU_ITEM_LEVEL:
+        return settings.level;
+    case MENU_ITEM_SPEED:
+        return settings.speed;
+    case MENU_ITEM_MODE:
+        return settings.mode;
+    case MENU_ITEM_SEQUENCE:
+        return settings.sequence;
+    default:
+        return 0;
+    }
+}
+
+static const char * settingsGetString(MenuIntem item)
+{
+    int val = settingsGetValue(item);
+    switch (item) {
         case MENU_ITEM_LEVEL:
-            return settings.level + 1;
+            return levelToStr[val];
         case MENU_ITEM_SPEED:
-            return settings.speed;
+            return speedToStr[val];
         case MENU_ITEM_MODE:
-            return settings.mode;
+            return modeToStr[val];
         case MENU_ITEM_SEQUENCE:
-            return settings.sequence;
+            return sequenceToStr[val];
         default:
-            return 0;
+            return NULL;
     }
 }
 
@@ -48,10 +94,11 @@ void gameMenuInit(void)
 {
     gameSettingsRead(&settings);
     currentItem = MENU_ITEM_LEVEL;
+    isItemSelected = false;
     lastUpdateMs = HAL_GetTick();
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize24);
+    OLED_SetTextSize(FontSize16);
     OLED_Printf(" MENU");
     OLED_UpdateScreen();
 }
@@ -63,64 +110,107 @@ static void updateMenu()
     OLED_SetTextSize(FontSize16);
     OLED_Printf("%s\n", menuItems[currentItem]);
     OLED_SetTextSize(FontSize12);
-    int32_t val = menuItemGetValue(currentItem);
-    OLED_Printf("%i", val);
+    const char *srt = settingsGetString(currentItem);
+    if (NULL != srt) {
+        OLED_Printf("%s", srt);
+    }
     OLED_UpdateScreen();
     lastUpdateMs = HAL_GetTick();
 }
 
-void gameMenuProcessAction(MenuAction action)
+static void processSettingChange(MenuAction action)
 {
-    switch (action) {
-        case MENU_ACTION_UP:
-            currentItem++;
-            if (currentItem >= MENU_ITEM_COUNT) {
-                currentItem = MENU_ITEM_LEVEL;
-            }
-            break;
-        case MENU_ACTION_DOWN:
-            currentItem--;
-            if (currentItem < MENU_ITEM_LEVEL) {
-                currentItem = MENU_ITEM_COUNT - 1;
-            }
-            break;
-        case MENU_ACTION_SELECT:
-            switch (currentItem) {
-                case MENU_ITEM_LEVEL:
-                    settings.level++;
-                    break;
-                case MENU_ITEM_SPEED:
-                    settings.speed++;
-                    break;
-                case MENU_ITEM_MODE:
-                    settings.mode++;
-                    break;
-                case MENU_ITEM_SEQUENCE:
-                    settings.sequence++;
-                    break;
-                case MENU_ITEM_RESET:
-                    gameSettingsReset();
-                    gameSettingsRead(&settings);
-                    break;
-                case MENU_ITEM_APPLY:
-                    gameSettingsWrite(&settings);
-                    // gameStateTransition(EVENT_INPUT_MENU);
-                    break;
-                case MENU_ITEM_EXIT:
+    switch (currentItem) {
+    case MENU_ITEM_LEVEL:
+        if (MENU_ACTION_UP == action) {
+            settings.level = (settings.level + 1) % LEVEL_COUNT;
+        } else if (MENU_ACTION_DOWN == action) {
+            settings.level = (settings.level + LEVEL_COUNT - 1) % LEVEL_COUNT;
+        }
+        break;
+    case MENU_ITEM_SPEED:
+        if (MENU_ACTION_UP == action) {
+            settings.speed = (settings.speed + 1) % GAME_SPEED_COUNT;
+        } else if (MENU_ACTION_DOWN == action) {
+            settings.speed = (settings.speed + GAME_SPEED_COUNT - 1) % GAME_SPEED_COUNT;
+        }
+        break;
+    case MENU_ITEM_MODE:
+        if (MENU_ACTION_UP == action) {
+            settings.mode = (settings.mode + 1) % GAME_MODE_COUNT;
+        } else if (MENU_ACTION_DOWN == action) {
+            settings.mode = (settings.mode + GAME_MODE_COUNT - 1) % GAME_MODE_COUNT;
+        }
+        break;
+    case MENU_ITEM_SEQUENCE:
+        if (MENU_ACTION_UP == action) {
+            settings.sequence = (settings.sequence + 1) % GAME_SEQUENCE_COUNT;
+        } else if (MENU_ACTION_DOWN == action) {
+            settings.sequence = (settings.sequence + GAME_SEQUENCE_COUNT - 1) % GAME_SEQUENCE_COUNT;
+        }
+        break;
+    default:
+        break;
+    }
+}
 
-                    break;
-            }
+static void processSelectAction()
+{
+    switch (currentItem) {
+        case MENU_ITEM_LEVEL:
+        case MENU_ITEM_SPEED:
+        case MENU_ITEM_MODE:
+        case MENU_ITEM_SEQUENCE:
+            isItemSelected = !isItemSelected;
             break;
-        case MENU_ACTION_BACK:
-            // gameStateTransition(EVENT_INPUT_MENU);
+        case MENU_ITEM_RESET:
+            gameSettingsReset();
+            gameSettingsRead(&settings);
             break;
-        case MENU_ACTION_MENU:
-            // gameStateTransition(EVENT_INPUT_MENU);
+        case MENU_ITEM_SAVE_AND_EXIT:
+            gameSettingsWrite(&settings);
+            gameStateProcessEvent(EVENT_MENU_EXIT);
             break;
-        default:
+        case MENU_ITEM_EXIT:
+            gameStateProcessEvent(EVENT_MENU_EXIT);
             break;
     }
+}
 
+static void processMenuItemChange(MenuAction action)
+{
+    switch (action) {
+    case MENU_ACTION_UP:
+        currentItem = (currentItem + 1) % MENU_ITEM_COUNT;
+        break;
+    case MENU_ACTION_DOWN:
+        currentItem--;
+        if (currentItem < MENU_ITEM_LEVEL) {
+            currentItem = MENU_ITEM_COUNT - 1;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+void gameMenuProcessAction(MenuAction action)
+{
+    if (MENU_ACTION_MENU == action) {
+        gameStateProcessEvent(EVENT_MENU_EXIT);
+        return;
+    }
+
+    if (MENU_ACTION_SELECT == action) {
+        processSelectAction();
+        return;
+    }
+
+    if (isItemSelected) {
+        processSettingChange(action);
+    } else {
+        processMenuItemChange(action);
+    }
     updateMenu();
 }
 

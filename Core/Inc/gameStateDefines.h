@@ -26,6 +26,7 @@ typedef enum {
     EVENT_INPUT_CORRECT,
     EVENT_INPUT_WRONG,
     EVENT_INPUT_MENU,
+    EVENT_MENU_EXIT,
     EVENT_COUNT
 } Event;
 

@@ -3,22 +3,22 @@
 #include <stdint.h>
 
 typedef enum {
-    GAME_SPEED_SLOW = 1U,
+    GAME_SPEED_SLOW = 0U,
     GAME_SPEED_MEDIUM,
     GAME_SPEED_HIGH,
     GAME_SPEED_COUNT
 } GameSpeed;
 
 typedef enum {
-    GAME_MODE_SINGLE = 1U,
+    GAME_MODE_SINGLE = 0U,
     GAME_MODE_PVP,
-    GAME_MODE_COUNT
+    GAME_MODE_COUNT,
 } GameMode;
 
 typedef enum {
-    GAME_SEQUENCE_STATIC = 1U,
+    GAME_SEQUENCE_STATIC = 0U,
     GAME_SEQUENCE_RANDOM,
-    GAME_SEQUENCE_COUNT
+    GAME_SEQUENCE_COUNT,
 } GameSequence;
 
 #pragma pack(push, 1)

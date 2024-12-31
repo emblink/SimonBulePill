@@ -109,7 +109,7 @@ static void stateInitEnter()
     OLED_Init(&hi2c1);
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize24);
+    OLED_SetTextSize(FontSize16);
     OLED_Printf(" SIMON!");
     OLED_UpdateScreen();
     if (!gameSettingsRead(&settings)) {
@@ -135,7 +135,7 @@ static void stateIdleEnter()
     effectManagerPlayEffect(EFFECT_BREATHE, LED_GREEN, 0, 2000);
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize24);
+    OLED_SetTextSize(FontSize16);
     // TODO: show cat sleep animation
     OLED_Printf("  IDLE");
     OLED_UpdateScreen();
@@ -300,7 +300,7 @@ static void stateSuccessEnter()
     // TODO: show happy cat
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize24);
+    OLED_SetTextSize(FontSize16);
     OLED_Printf("SUCCESS");
     OLED_UpdateScreen();
 }
@@ -319,7 +319,7 @@ static void stateFailEnter()
     // TODO: show sad cat
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize24);
+    OLED_SetTextSize(FontSize16);
     OLED_Printf(" FAILED");
     OLED_UpdateScreen();
 }
@@ -334,7 +334,7 @@ static void statePowerOffEnter()
     lastProcessMs = HAL_GetTick();
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize24);
+    OLED_SetTextSize(FontSize16);
     OLED_Printf(" SLEEP");
     OLED_UpdateScreen();
     // OLED_FillScreen(Black);
@@ -385,8 +385,6 @@ static void stateMenuProcess()
         gameMenuProcessAction(MENU_ACTION_DOWN);
     } else if (userInput.green) {
         gameMenuProcessAction(MENU_ACTION_SELECT);
-    } else if (userInput.red) {
-        gameMenuProcessAction(MENU_ACTION_BACK);
     } else if (userInput.menu) {
         gameMenuProcessAction(MENU_ACTION_MENU);
     }
