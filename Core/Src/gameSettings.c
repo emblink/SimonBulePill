@@ -3,6 +3,15 @@
 #include "crc.h"
 #include "levels.h"
 
+/* Declare the settings in the reserved area */
+typedef union {
+    GameSettings settings;
+    uint8_t raw[FLASH_PAGE_SIZE];
+} FlashGameSettings;
+
+// Place gameSettings in the reserved .settings section
+__attribute__((section(".settings"), used)) FlashGameSettings gameData;
+
 static uint32_t calculateChecksum(GameSettings *settings)
 {
      uint32_t checksum = HAL_CRC_Calculate(&hcrc, (uint32_t *) settings,
@@ -14,11 +23,11 @@ static bool saveSettings(GameSettings *settings)
 {
     settings->checksum = calculateChecksum(settings);
 
-    bool res = flashStorageErase(FLASH_BASE_ADDRESS);
+    bool res = flashStorageErase((uint32_t) &gameData);
     if (!res) {
         return false;
     }
-    res = flashStorageWrite(FLASH_BASE_ADDRESS, (uint32_t *) settings, sizeof(GameSettings));
+    res = flashStorageWrite((uint32_t) &gameData, (uint32_t *) settings, sizeof(GameSettings));
     if (!res) {
         return false;
     }
@@ -40,12 +49,12 @@ void gameSettingsReset()
 
 bool gameSettingsRead(GameSettings *settings)
 {
-    flashStorageRead(FLASH_BASE_ADDRESS, settings, sizeof(GameSettings));
-    if (settings->version != FLASH_STORAGE_VERSION) {
+    *settings = gameData.settings;
+    if (gameData.settings.version != FLASH_STORAGE_VERSION) {
         return false;
     }
     uint32_t checksum = calculateChecksum(settings);
-    bool match = checksum == settings->checksum;
+    bool match = checksum == gameData.settings.checksum;
     return match;
 }
 

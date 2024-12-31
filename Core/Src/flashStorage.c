@@ -35,13 +35,3 @@ bool flashStorageErase(uint32_t pageAddress)
     HAL_FLASH_Lock(); // Lock Flash after erase
     return true;
 }
-
-void flashStorageRead(uint32_t address, void *data, uint32_t size)
-{
-    uint8_t *src = (uint8_t *) address;
-    uint8_t *dest = (uint8_t *) data;
-
-    for (uint32_t i = 0; i < size; i++) {
-        dest[i] = src[i];
-    }
-}
