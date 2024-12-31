@@ -7,6 +7,7 @@
 #include "gameState.h"
 
 #define MENU_UPDATE_INTERVAL_MS 100
+#define MENU_HIGHLIGHT_INTERVAL_MS 250
 typedef enum {
     MENU_ITEM_LEVEL = 0,
     MENU_ITEM_SPEED,
@@ -23,8 +24,8 @@ static const char * menuItems[] = {
     [MENU_ITEM_SPEED] = "Speed",
     [MENU_ITEM_MODE] = "Mode",
     [MENU_ITEM_SEQUENCE] = "Sequence",
-    [MENU_ITEM_RESET] = "Reset To\r\nDefaults",
-    [MENU_ITEM_SAVE_AND_EXIT] = "Save And\r\nExit",
+    [MENU_ITEM_RESET] = "Reset to defaults",
+    [MENU_ITEM_SAVE_AND_EXIT] = "Save and exit",
     [MENU_ITEM_EXIT] = "Exit",
 };
 
@@ -53,9 +54,16 @@ static const char * levelToStr[] = {
 };
 
 static uint32_t lastUpdateMs = 0;
+static uint32_t lastHighlightMs = 0;
+static bool isHighlighted = false;
 static GameSettings settings = {0};
 static int currentItem = MENU_ITEM_LEVEL;
 static bool isItemSelected = false;
+
+static inline bool isTimeoutHappened(uint32_t lastProcessMs, uint32_t timeoutMs)
+{
+    return HAL_GetTick() - lastProcessMs >= timeoutMs;
+}
 
 static uint8_t settingsGetValue(MenuIntem item)
 {
@@ -95,6 +103,7 @@ void gameMenuInit(void)
     gameSettingsRead(&settings);
     currentItem = MENU_ITEM_LEVEL;
     isItemSelected = false;
+    isHighlighted = false;
     lastUpdateMs = HAL_GetTick();
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
@@ -107,12 +116,16 @@ static void updateMenu()
 {
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize16);
+    OLED_SetTextSize(FontSize12);
     OLED_Printf("%s\n", menuItems[currentItem]);
     OLED_SetTextSize(FontSize12);
     const char *srt = settingsGetString(currentItem);
     if (NULL != srt) {
-        OLED_Printf("%s", srt);
+        if (isHighlighted) {
+            OLED_Printf(">%s", srt);
+        } else {
+            OLED_Printf(" %s ", srt);
+        }
     }
     OLED_UpdateScreen();
     lastUpdateMs = HAL_GetTick();
@@ -162,6 +175,7 @@ static void processSelectAction()
         case MENU_ITEM_MODE:
         case MENU_ITEM_SEQUENCE:
             isItemSelected = !isItemSelected;
+            isHighlighted = isItemSelected;
             break;
         case MENU_ITEM_RESET:
             gameSettingsReset();
@@ -184,10 +198,7 @@ static void processMenuItemChange(MenuAction action)
         currentItem = (currentItem + 1) % MENU_ITEM_COUNT;
         break;
     case MENU_ACTION_DOWN:
-        currentItem--;
-        if (currentItem < MENU_ITEM_LEVEL) {
-            currentItem = MENU_ITEM_COUNT - 1;
-        }
+        currentItem = (currentItem + MENU_ITEM_COUNT - 1) % MENU_ITEM_COUNT;
         break;
     default:
         break;
@@ -216,8 +227,16 @@ void gameMenuProcessAction(MenuAction action)
 
 void gameMenuProcess(void)
 {
-    uint32_t tick = HAL_GetTick();
-    if (tick - lastUpdateMs >= MENU_UPDATE_INTERVAL_MS) {
+    bool update = false;
+    if (isItemSelected && isTimeoutHappened(lastHighlightMs, MENU_HIGHLIGHT_INTERVAL_MS)) {
+        isHighlighted = !isHighlighted;
+        lastHighlightMs = HAL_GetTick();
+        update = true;
+    } else if (isTimeoutHappened(lastUpdateMs, MENU_UPDATE_INTERVAL_MS)) {
+        update = true;
+    }
+
+    if (update) {
         updateMenu();
     }
 }
