@@ -29,6 +29,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "game.h"
+#include "sleepManager.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -112,8 +113,7 @@ int main(void)
   {
 	  gameProcess();
 	// Enter low-power mode, waiting for the next interrupt
-	  __WFI();  // Wait For Interrupt instruction
-//	  HAL_IWDG_Refresh(&hiwdg);
+	  sleepManagerProcess();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

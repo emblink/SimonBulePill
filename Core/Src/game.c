@@ -12,6 +12,7 @@
 #include "gameSettings.h"
 #include "fontSize.h"
 #include "gameMenu.h"
+#include "audioAmplifier.h"
 
 // Time constants
 #define SECOND 1000
@@ -70,9 +71,26 @@ static const Led keyLedMap[] = {
     [KEY_YELLOW] = LED_YELLOW,
 };
 
+static inline void ledOn()
+{
+	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
+}
+
+static inline void ledOff()
+{
+	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 1);
+}
+
 static void onPlaybackFinished()
 {
+	// audioAmplifierMute(true); // makes bumping sound in the end even if the sound sine fades properly
+	ledOff();
+}
 
+static void onPlaybackStarted()
+{
+	audioAmplifierMute(false);
+	ledOn();
 }
 
 static void onEffectFinished(Led led)
@@ -104,6 +122,7 @@ static bool isTimeoutHappened(uint32_t timeoutMs)
 static void stateInitEnter()
 {
     lastProcessMs = HAL_GetTick();
+    audioAmplifierInit();
     OLED_Init(&hi2c1);
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
@@ -115,7 +134,7 @@ static void stateInitEnter()
         gameSettingsRead(&settings);
     }
     keyscanInit(&onKeyPressCallback);
-    notePlayerInit(&onPlaybackFinished);
+    notePlayerInit(&onPlaybackStarted, &onPlaybackFinished);
     effectManagerInit(&onEffectFinished);
     notePlayerPlayMelody(getMelody(MelodyPowerOn), getMelodyLength(MelodyPowerOn));
     effectManagerPlayPowerOn();

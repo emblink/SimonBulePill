@@ -82,6 +82,10 @@ void Error_Handler(void);
 #define KEY_RED_Pin GPIO_PIN_15
 #define KEY_RED_GPIO_Port GPIOB
 #define KEY_RED_EXTI_IRQn EXTI15_10_IRQn
+#define AMP_MUTE_Pin GPIO_PIN_4
+#define AMP_MUTE_GPIO_Port GPIOB
+#define AMP_SHUTDOWN_Pin GPIO_PIN_5
+#define AMP_SHUTDOWN_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
