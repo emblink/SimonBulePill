@@ -38,16 +38,14 @@ typedef union {
     uint32_t state;
 } Keys;
 
-// TODO: Add a menu button handling
-// TODO: Add a in game menu state with settings
-// TODO: Add 1 min timeut for the menu state with idle transition
-// TODO: Add level, speed, mode, sequence, reset to defaults menu list
-// TODO: Add apply or exit option with green or red button
-
 // TODO: Add game 3 game speeds 1000ms, 500 ms, 250ms
+// TODO: Add MCU light sleep mode while keyscan is working
+// TODO: Add MCU deep sleep mode and utilize RTC sleep/wake with Systick counter update after wake up
 // TODO: Add a game mode single player, player vs player
-
 // TODO: Refactor, put all global variables to a struct
+// TODO: Add hello/happy/sad/sleepping cat animation
+// TODO: Add transition to Idle state sound
+// TODO: Add power off animation
 
 static uint32_t lastProcessMs = 0;
 static uint32_t currentLevelNum = LEVEL_1;
@@ -125,7 +123,7 @@ static void stateInitEnter()
 
 static void stateInitProcess()
 {
-    // TODO: show cat wake up animation
+    // show cat wake up animation here
 }
 
 static void stateIdleEnter()
@@ -136,7 +134,7 @@ static void stateIdleEnter()
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize16);
-    // TODO: show cat sleep animation
+    // show cat sleep animation here
     OLED_Printf("  IDLE");
     OLED_UpdateScreen();
     input.state = 0; // reset input state
@@ -185,9 +183,7 @@ static void stateShowLevelEnter()
 
 static void stateShowLevelExit()
 {
-    // TODO: maybe confirm readiness for input with a melody
     effectManagerStopAllEffects();
-    // notePlayerPlayMelody(getMelody(MelodyConfirm), getMelodyLength(MelodyConfirm));
     levelIdx = 0;
 }
 
@@ -240,7 +236,7 @@ static void stateUserInputProcess()
         retries++;
         if (retries >= LEVEL_SHOW_RETRIES) {
             gameStateProcessEvent(EVENT_STATE_TIMEOUT);
-            // TODO: add short idle sound
+            // add short idle sound here
         } else {
             gameStateProcessEvent(EVENT_INPUT_TIMEOUT);
         }
@@ -297,7 +293,7 @@ static void stateSuccessEnter()
     }
     levelIdx = 0;
 
-    // TODO: show happy cat
+    // show happy cat
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize16);
@@ -307,7 +303,7 @@ static void stateSuccessEnter()
 
 static void stateSuccessProcess()
 {
-    // TODO: maybe process animation
+
 }
 
 static void stateFailEnter()
@@ -316,7 +312,7 @@ static void stateFailEnter()
     effectManagerStopAllEffects();
     effectManagerPlayEffect(EFFECT_BLINK, LED_RED, 500, 500 / 4);
     notePlayerPlayMelody(getMelody(MelodyFail), getMelodyLength(MelodyFail));
-    // TODO: show sad cat
+    // show sad cat here
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize16);
@@ -326,7 +322,7 @@ static void stateFailEnter()
 
 static void stateFailProcess()
 {
-    // TODO: maybe process animation
+
 }
 
 static void statePowerOffEnter()
@@ -337,17 +333,14 @@ static void statePowerOffEnter()
     OLED_SetTextSize(FontSize16);
     OLED_Printf(" SLEEP");
     OLED_UpdateScreen();
-    // OLED_FillScreen(Black);
-    // OLED_UpdateScreen();
-    // OLED_DisplayOff();
     effectManagerPlayPowerOff();
-    // TODO: power off animation and sound
+    // add power off animation and sound
     // Shut down MCU
 }
 
 static void statePowerOffProcess()
 {
-    // TODO: proper wake up from power off
+    // add proper wake up from power off
     if (input.state) {
         gameStateProcessEvent(EVENT_INPUT_RECEIVED);
     }
