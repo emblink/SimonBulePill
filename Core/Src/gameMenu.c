@@ -17,7 +17,7 @@ typedef enum {
     MENU_ITEM_SAVE_AND_EXIT,
     MENU_ITEM_EXIT,
     MENU_ITEM_COUNT
-} MenuIntem;
+} MenuItem;
 
 static const char * menuItems[] = {
     [MENU_ITEM_LEVEL] = "Level",
@@ -53,6 +53,20 @@ static const char * levelToStr[] = {
     "5",
 };
 
+static const char ** settingValueToStr[] = {
+    [MENU_ITEM_LEVEL] = levelToStr,
+    [MENU_ITEM_SPEED] = speedToStr,
+    [MENU_ITEM_MODE] = modeToStr,
+    [MENU_ITEM_SEQUENCE] = sequenceToStr
+};
+
+static const uint8_t settingMaxValue[] = {
+    [MENU_ITEM_LEVEL] = LEVEL_COUNT,
+    [MENU_ITEM_SPEED] = GAME_SPEED_COUNT,
+    [MENU_ITEM_MODE] = GAME_MODE_COUNT,
+    [MENU_ITEM_SEQUENCE] = GAME_SEQUENCE_COUNT
+};
+
 static uint32_t lastUpdateMs = 0;
 static uint32_t lastHighlightMs = 0;
 static bool isHighlighted = false;
@@ -60,42 +74,30 @@ static GameSettings settings = {0};
 static int currentItem = MENU_ITEM_LEVEL;
 static bool isItemSelected = false;
 
+static uint8_t * itemToSettingValue[] = {
+    [MENU_ITEM_LEVEL] = &settings.level,
+    [MENU_ITEM_SPEED] = &settings.speed,
+    [MENU_ITEM_MODE] = &settings.mode,
+    [MENU_ITEM_SEQUENCE] = &settings.sequence
+};
+
 static inline bool isTimeoutHappened(uint32_t lastProcessMs, uint32_t timeoutMs)
 {
     return HAL_GetTick() - lastProcessMs >= timeoutMs;
 }
 
-static uint8_t settingsGetValue(MenuIntem item)
+static const char * settingsGetString(MenuItem item)
 {
-    switch (item) {
-    case MENU_ITEM_LEVEL:
-        return settings.level;
-    case MENU_ITEM_SPEED:
-        return settings.speed;
-    case MENU_ITEM_MODE:
-        return settings.mode;
-    case MENU_ITEM_SEQUENCE:
-        return settings.sequence;
-    default:
-        return 0;
+    if (item > MENU_ITEM_SEQUENCE) {
+        return NULL;
     }
-}
 
-static const char * settingsGetString(MenuIntem item)
-{
-    int val = settingsGetValue(item);
-    switch (item) {
-        case MENU_ITEM_LEVEL:
-            return levelToStr[val];
-        case MENU_ITEM_SPEED:
-            return speedToStr[val];
-        case MENU_ITEM_MODE:
-            return modeToStr[val];
-        case MENU_ITEM_SEQUENCE:
-            return sequenceToStr[val];
-        default:
-            return NULL;
+    uint8_t val = *itemToSettingValue[item];
+    if (val > settingMaxValue[item]) {
+        return "Invalid";
     }
+
+    return settingValueToStr[item][val];
 }
 
 void gameMenuInit(void)
@@ -119,51 +121,27 @@ static void updateMenu()
     OLED_SetTextSize(FontSize12);
     OLED_Printf("%s\n", menuItems[currentItem]);
     OLED_SetTextSize(FontSize12);
-    const char *srt = settingsGetString(currentItem);
-    if (NULL != srt) {
+    const char *str = settingsGetString(currentItem);
+    if (str) {
         if (isHighlighted) {
-            OLED_Printf(">%s", srt);
+            OLED_Printf(">%s", str);
         } else {
-            OLED_Printf(" %s ", srt);
+            OLED_Printf(" %s ", str);
         }
     }
     OLED_UpdateScreen();
     lastUpdateMs = HAL_GetTick();
 }
 
-static void processSettingChange(MenuAction action)
-{
-    switch (currentItem) {
-    case MENU_ITEM_LEVEL:
-        if (MENU_ACTION_UP == action) {
-            settings.level = (settings.level + 1) % LEVEL_COUNT;
-        } else if (MENU_ACTION_DOWN == action) {
-            settings.level = (settings.level + LEVEL_COUNT - 1) % LEVEL_COUNT;
+static void processSettingChange(MenuAction action) {
+    if (currentItem >= MENU_ITEM_LEVEL && currentItem <= MENU_ITEM_SEQUENCE) {
+        uint8_t *setting = itemToSettingValue[currentItem];
+        uint8_t maxVal = settingMaxValue[currentItem];
+        if (action == MENU_ACTION_UP) {
+            *setting = (*setting + 1) % maxVal;
+        } else if (action == MENU_ACTION_DOWN) {
+            *setting = (*setting + maxVal - 1) % maxVal;
         }
-        break;
-    case MENU_ITEM_SPEED:
-        if (MENU_ACTION_UP == action) {
-            settings.speed = (settings.speed + 1) % GAME_SPEED_COUNT;
-        } else if (MENU_ACTION_DOWN == action) {
-            settings.speed = (settings.speed + GAME_SPEED_COUNT - 1) % GAME_SPEED_COUNT;
-        }
-        break;
-    case MENU_ITEM_MODE:
-        if (MENU_ACTION_UP == action) {
-            settings.mode = (settings.mode + 1) % GAME_MODE_COUNT;
-        } else if (MENU_ACTION_DOWN == action) {
-            settings.mode = (settings.mode + GAME_MODE_COUNT - 1) % GAME_MODE_COUNT;
-        }
-        break;
-    case MENU_ITEM_SEQUENCE:
-        if (MENU_ACTION_UP == action) {
-            settings.sequence = (settings.sequence + 1) % GAME_SEQUENCE_COUNT;
-        } else if (MENU_ACTION_DOWN == action) {
-            settings.sequence = (settings.sequence + GAME_SEQUENCE_COUNT - 1) % GAME_SEQUENCE_COUNT;
-        }
-        break;
-    default:
-        break;
     }
 }
 
