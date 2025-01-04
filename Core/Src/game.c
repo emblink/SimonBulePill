@@ -39,7 +39,11 @@ typedef union {
     uint32_t state;
 } Keys;
 
+// Nessesary
 // TODO: Add MCU deep sleep mode and utilize RTC sleep/wake with Systick counter update after wake up
+// TODO: Add ADC and battery level monitoring
+
+// Optional
 // TODO: Add a game mode single player, player vs player
 // TODO: Refactor, put all global variables to a struct
 // TODO: Add hello/happy/sad/sleepping cat animation
@@ -77,12 +81,12 @@ static const uint32_t gameSpeedToDuration[] = {
 
 static inline void ledOn()
 {
-	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
+//	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
 }
 
 static inline void ledOff()
 {
-	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 1);
+//	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 1);
 }
 
 static void onPlaybackFinished()

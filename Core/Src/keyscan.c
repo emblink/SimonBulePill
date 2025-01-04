@@ -68,3 +68,8 @@ void keyscanEnableIrq()
 {
     SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
 }
+
+bool keyscanIsRunning()
+{
+	return 0 != processCounter;
+}
