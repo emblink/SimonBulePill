@@ -10,15 +10,16 @@ static uint32_t transitionTimeoutMs = 0;
 
 static void changeState(const StateTransition *transition)
 {
+    if (stateDefs[currentState].onExit) {
+        stateDefs[currentState].onExit();
+    }
+
     if (transition->delayMs) {
         nextState = transition->nextState;
         currentState = GAME_STATE_TRANSITION;
         transitionStartMs = HAL_GetTick();
         transitionTimeoutMs = transition->delayMs;
     } else {
-        if (stateDefs[currentState].onExit) {
-            stateDefs[currentState].onExit();
-        }
         currentState = transition->nextState;
         if (stateDefs[currentState].onEnter) {
             stateDefs[currentState].onEnter();
