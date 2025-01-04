@@ -45,7 +45,9 @@ void gameStateProcess(void)
     if (GAME_STATE_TRANSITION == currentState) {
         if (HAL_GetTick() - transitionStartMs >= transitionTimeoutMs) {
             currentState = nextState;
-            stateDefs[currentState].onEnter();
+            if (stateDefs[currentState].onEnter) {
+                stateDefs[currentState].onEnter();
+            }
         }
     }
 

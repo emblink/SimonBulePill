@@ -39,8 +39,6 @@ typedef union {
     uint32_t state;
 } Keys;
 
-// TODO: Add game 3 game speeds 1000ms, 500 ms, 250ms
-// TODO: Add MCU light sleep mode while keyscan is working
 // TODO: Add MCU deep sleep mode and utilize RTC sleep/wake with Systick counter update after wake up
 // TODO: Add a game mode single player, player vs player
 // TODO: Refactor, put all global variables to a struct
@@ -58,10 +56,10 @@ static uint32_t retries = 0;
 static GameSettings settings = {0};
 
 static const Note keyNoteMap[] = {
-    [KEY_RED] = { NOTE_C4, 800 },
-    [KEY_GREEN] = { NOTE_E4, 800 },
-    [KEY_BLUE] = { NOTE_G4, 800 },
-    [KEY_YELLOW] = { NOTE_B4, 800 },
+    [KEY_RED] = { NOTE_C4, 0 },
+    [KEY_GREEN] = { NOTE_E4, 0 },
+    [KEY_BLUE] = { NOTE_G4, 0 },
+    [KEY_YELLOW] = { NOTE_C5, 0 },
 };
 
 static const Led keyLedMap[] = {
@@ -69,6 +67,12 @@ static const Led keyLedMap[] = {
     [KEY_GREEN] = LED_GREEN,
     [KEY_BLUE] = LED_BLUE,
     [KEY_YELLOW] = LED_YELLOW,
+};
+
+static const uint32_t gameSpeedToDuration[] = {
+    [GAME_SPEED_SLOW] = 800,
+    [GAME_SPEED_MEDIUM] = 500,
+    [GAME_SPEED_HIGH] = 250,
 };
 
 static inline void ledOn()
@@ -230,8 +234,9 @@ static void stateShowLevelProcess()
         Key key = currentLevel->sequence[levelIdx++];
         oledShowSequence("Showing");
         Note n = keyNoteMap[key];
-        notePlayerPlayNote(n.note, n.duration);
-        effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[key], n.duration, n.duration);
+        uint32_t duration = gameSpeedToDuration[settings.speed];
+        notePlayerPlayNote(n.note, duration);
+        effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[key], duration, duration);
     }
 }
 
