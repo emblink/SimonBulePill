@@ -1,9 +1,10 @@
 #MicroXplorer Configuration settings - do not modify
 ADC1.Channel-2\#ChannelRegularConversion=ADC_CHANNEL_1
-ADC1.IPParameters=Rank-2\#ChannelRegularConversion,master,Channel-2\#ChannelRegularConversion,SamplingTime-2\#ChannelRegularConversion,NbrOfConversionFlag
+ADC1.IPParameters=Rank-2\#ChannelRegularConversion,master,Channel-2\#ChannelRegularConversion,SamplingTime-2\#ChannelRegularConversion,NbrOfConversionFlag,NbrOfConversion
+ADC1.NbrOfConversion=1
 ADC1.NbrOfConversionFlag=1
 ADC1.Rank-2\#ChannelRegularConversion=1
-ADC1.SamplingTime-2\#ChannelRegularConversion=ADC_SAMPLETIME_1CYCLE_5
+ADC1.SamplingTime-2\#ChannelRegularConversion=ADC_SAMPLETIME_239CYCLES_5
 ADC1.master=1
 CAD.formats=
 CAD.pinconfig=
@@ -97,6 +98,8 @@ NVIC.TIM1_UP_IRQn=true\:0\:0\:false\:false\:true\:true\:true\:true
 NVIC.UsageFault_IRQn=true\:0\:0\:false\:false\:true\:false\:false\:false
 PA0-WKUP.Mode=SYS_WakeUp0
 PA0-WKUP.Signal=SYS_WKUP
+PA1.GPIOParameters=GPIO_Label
+PA1.GPIO_Label=BAT_ADC
 PA1.Signal=ADCx_IN1
 PA13.Mode=Serial_Wire
 PA13.Signal=SYS_JTMS-SWDIO

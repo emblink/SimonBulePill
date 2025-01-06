@@ -110,9 +110,8 @@ void sleepManagerProcess()
         }
     }
 
-    __WFI();
     if (isSoundPlaying || isKeyScanRunning || isEffectPlaying) {
-        
+        __WFI();
     } else {
         // TODO: fix state transition blocking by sleep, use state machine to handle sleep
         // enterStopMode();

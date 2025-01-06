@@ -31,6 +31,7 @@
 /* USER CODE BEGIN Includes */
 #include "game.h"
 #include "sleepManager.h"
+#include "batteryManager.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -105,6 +106,7 @@ int main(void)
   MX_CRC_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+  batteryManagerInit();
   sleepManagerInit();
   gameInit();
   /* USER CODE END 2 */
