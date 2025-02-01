@@ -8,20 +8,21 @@
 #include "main.h"
 #include "effectManager.h"
 #include "keyscan.h"
+#include "gameState.h"
 
 #define APM_MUTE_TIMEOUT_MS 250
 
 static uint32_t lastPlaybackMs = 0;
 static volatile bool rtcWakeupFlag = false;
 
-static inline void ledOn()
+static inline void sleepPinOn()
 {
-	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 1);
+	HAL_GPIO_WritePin(SLEEP_TRACK_PIN_GPIO_Port, SLEEP_TRACK_PIN_Pin, 1);
 }
 
-static inline void ledOff()
+static inline void sleepPinOff()
 {
-	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
+	HAL_GPIO_WritePin(SLEEP_TRACK_PIN_GPIO_Port, SLEEP_TRACK_PIN_Pin, 0);
 }
 
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
@@ -37,7 +38,6 @@ void HAL_RTCEx_RTCEventCallback(RTC_HandleTypeDef *hrtc)
 void sleepManagerInit()
 {
     // Init RTC
-    ledOn();
     RTC_DateTypeDef  sDate = {0};
     RTC_TimeTypeDef sTime = {0};
     HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
@@ -59,19 +59,18 @@ static void rtcAlarmDisable()
     HAL_RTC_DeactivateAlarm(&hrtc, RTC_ALARM_A);
 }
 
-static void enterStopMode()
+static void enterStopMode(uint32_t sleepDurationMs)
 {
     HAL_SuspendTick();
     // Reset RTC time to zero
     RTC_TimeTypeDef sTime = {0};
     HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-    uint32_t sleepDurationMs = 0;
-//    rtcAlarmEnable(); // Not used for now
-    ledOff();
+    rtcAlarmEnable(sleepDurationMs);
+    sleepPinOff();
     // Enter Stop Mode
     HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
     // Exit Stop Mode
-    ledOn();
+    sleepPinOn();
 
     // Update SysTick counter after sleep wake up
     RTC_TimeTypeDef wakeUpTime = {0};
@@ -95,6 +94,11 @@ static void enterStopMode()
     HAL_ResumeTick();
 }
 
+static void enterStandbyMode()
+{
+
+}
+
 void sleepManagerProcess()
 {
     // __disable_irq();
@@ -110,12 +114,15 @@ void sleepManagerProcess()
         }
     }
 
-    __WFI();
     if (isSoundPlaying || isKeyScanRunning || isEffectPlaying) {
-        
+        __WFI();
     } else {
-        // TODO: fix state transition blocking by sleep, use state machine to handle sleep
-        // enterStopMode();
+        uint32_t sleepMs = gameStateGetNextProcessTime() - HAL_GetTick();
+        if (sleepMs) {
+            enterStopMode(sleepMs);
+        } else {
+            __WFI();
+        }
     }
     // __enable_irq();
     // HAL_IWDG_Refresh(&hiwdg);

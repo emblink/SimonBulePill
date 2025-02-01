@@ -1,4 +1,7 @@
-#include "stddef.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include "gameState.h"
 #include "gameStateTransitions.h"
 #include "stm32f1xx_hal.h"
 
@@ -7,6 +10,7 @@ static GameState currentState = GAME_STATE_NONE;
 static GameState nextState = GAME_STATE_NONE;
 static uint32_t transitionStartMs = 0;
 static uint32_t transitionTimeoutMs = 0;
+static uint32_t stateEnterMs = 0;
 
 static void changeState(const StateTransition *transition)
 {
@@ -22,8 +26,27 @@ static void changeState(const StateTransition *transition)
     } else {
         currentState = transition->nextState;
         if (stateDefs[currentState].onEnter) {
+            stateEnterMs = HAL_GetTick();
             stateDefs[currentState].onEnter();
         }
+    }
+}
+
+static uint32_t gameStateGetTimeout(void)
+{
+    return stateDefs[currentState].timeoutMs;
+}
+
+static inline bool isTimeoutHappened(uint32_t lastProcessMs, uint32_t timeoutMs)
+{
+    return HAL_GetTick() - lastProcessMs >= timeoutMs;
+}
+
+static void gameStateProcessTimeout()
+{
+    uint32_t stateTimeoutMs = gameStateGetTimeout();
+    if (stateTimeoutMs && isTimeoutHappened(stateEnterMs, stateTimeoutMs)) {
+        gameStateProcessEvent(EVENT_STATE_TIMEOUT);
     }
 }
 
@@ -47,6 +70,7 @@ void gameStateProcess(void)
         if (HAL_GetTick() - transitionStartMs >= transitionTimeoutMs) {
             currentState = nextState;
             if (stateDefs[currentState].onEnter) {
+            	stateEnterMs = HAL_GetTick();
                 stateDefs[currentState].onEnter();
             }
         }
@@ -55,14 +79,25 @@ void gameStateProcess(void)
     if (stateDefs[currentState].onProcess) {
         stateDefs[currentState].onProcess();
     }
+    gameStateProcessTimeout();
 }
 
-uint32_t gameStateGetTimeout(void)
-{
-    return stateDefs[currentState].timeoutMs;
-}
-
-GameState gameStateGet()
+GameState gameStateGetCurrentState()
 {
     return currentState;
+}
+
+uint32_t gameStateGetNextProcessTime()
+{
+    uint32_t currentTick = HAL_GetTick();
+    if (GAME_STATE_TRANSITION == currentState) {
+        return transitionStartMs + transitionTimeoutMs;
+    }
+
+    uint32_t stateTimeout = gameStateGetTimeout();
+    if (stateTimeout) {
+        return stateEnterMs + stateTimeout;
+    }
+
+    return 0;
 }

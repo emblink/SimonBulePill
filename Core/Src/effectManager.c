@@ -39,6 +39,7 @@ uint8_t interpolate(int32_t start, int32_t end, uint32_t elapsed, uint32_t durat
 
 static void setLedPwm(Led led, int pwm)
 {
+	pwm = 255 - pwm; // Invert PWM value (0 = full brightness)
 	switch (led) {
 	case LED_RED: TIM3->CCR1 = pwm; break;
 	case LED_GREEN: TIM3->CCR2 = pwm; break;
@@ -51,6 +52,9 @@ static void setLedPwm(Led led, int pwm)
 void effectManagerInit(EffectFinishedCallback callback)
 {
 	finishedCb = callback;
+    for (Led led = LED_RED; led < LED_COUNT; led++) {
+        setLedPwm(led, 0); // Initialize all LEDs to off
+    }
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);

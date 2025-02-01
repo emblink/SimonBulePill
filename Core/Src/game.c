@@ -20,9 +20,8 @@
 
 // Timeouts and intervals
 #define USER_INPUT_TIMEOUT_MS (10 * SECOND)
-#define LEVEL_SHOW_RETRIES 3
+#define LEVEL_REPEAT_LIMIT 3
 #define POWER_OFF_TIMEOUT_MS (1 * MINUTE)
-#define OLED_REFRESH_INTERVAL_MS 100
 #define INIT_STATE_TIMEOUT_MS (1 * SECOND)
 #define SUCCESS_STATE_TIMEOUT_MS (750)
 #define FAILURE_STATE_TIMEOUT_MS (750)
@@ -40,7 +39,8 @@ typedef union {
 } Keys;
 
 // Nessesary
-// TODO: Add MCU deep sleep mode and utilize RTC sleep/wake with Systick counter update after wake up
+// TODO: fix the transition stuck with the sleep mode enabled
+// TODO: Add MCU Standby mode wake up from any pin interrupt
 // TODO: Add ADC and battery level monitoring
 
 // Optional
@@ -50,13 +50,12 @@ typedef union {
 // TODO: Add transition to Idle state sound
 // TODO: Add power off animation
 
-static uint32_t lastProcessMs = 0;
 static uint32_t currentLevelNum = LEVEL_1;
 static const Level * currentLevel = {0};
 static uint32_t currentLevelSeqIdx = 1;
 static uint32_t levelIdx = 0;
 static volatile Keys input = {0};
-static uint32_t retries = 0;
+static uint32_t levelRepeatCount = 0;
 static GameSettings settings = {0};
 
 static const Note keyNoteMap[] = {
@@ -118,18 +117,8 @@ static void onKeyPressCallback(Key key, bool isPressed)
     }
 }
 
-static bool isTimeoutHappened(uint32_t timeoutMs)
-{
-    uint32_t tick = HAL_GetTick();
-    if (tick - lastProcessMs >= timeoutMs) {
-        return true;
-    }
-    return false;
-}
-
 static void stateInitEnter()
 {
-    lastProcessMs = HAL_GetTick();
     audioAmplifierInit();
     OLED_Init(&hi2c1);
     OLED_FillScreen(Black);
@@ -155,7 +144,6 @@ static void stateInitProcess()
 
 static void stateIdleEnter()
 {
-    lastProcessMs = HAL_GetTick();
     effectManagerStopAllEffects();
     effectManagerPlayEffect(EFFECT_BREATHE, LED_GREEN, 0, 2000);
     OLED_FillScreen(Black);
@@ -173,7 +161,7 @@ static void stateIdleProcess()
         effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 300, 300 / 4);
         notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
         gameStateProcessEvent(EVENT_INPUT_RECEIVED);
-        retries = 0;
+        levelRepeatCount = 0;
     }
 
     if (input.menu) {
@@ -196,9 +184,16 @@ static void oledShowSequence(const char stateStr[])
 
 static void stateShowLevelEnter()
 {
-    lastProcessMs = HAL_GetTick();
     effectManagerStopAllEffects();
     levelIdx = 0;
+
+    levelRepeatCount++;
+    if (levelRepeatCount > LEVEL_REPEAT_LIMIT) {
+        levelRepeatCount = 0;
+        gameStateProcessEvent(EVENT_LEVEL_REPEATED_TOO_MANY_TIMES);
+        return;
+    }
+
     if (GAME_SEQUENCE_STATIC == settings.sequence) {
         currentLevel = levelsGetStaticLevel(currentLevelNum);
     } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
@@ -222,7 +217,7 @@ static void stateShowLevelProcess()
     }
 
     if (input.state) {
-        retries = 0;
+        levelRepeatCount = 0;
         gameStateProcessEvent(EVENT_SEQUENCE_CANCELED);
         return;
     }
@@ -249,7 +244,6 @@ static void stateUserInputEnter()
     // Reset input state before the level sequence is shown
     // User have to press a key to cancel the sequence and confirm readiness
     input.state = 0;
-    lastProcessMs = HAL_GetTick();
     oledShowSequence("Input");
 }
 
@@ -260,23 +254,11 @@ static void stateUserInputProcess()
         return;
     }
 
-    if (isTimeoutHappened(USER_INPUT_TIMEOUT_MS)) {
-        retries++;
-        if (retries >= LEVEL_SHOW_RETRIES) {
-            gameStateProcessEvent(EVENT_STATE_TIMEOUT);
-            // add short idle sound here
-        } else {
-            gameStateProcessEvent(EVENT_INPUT_TIMEOUT);
-        }
-        return;
-    }
-
     if (0 == input.state) {
         return;
     }
 
-    lastProcessMs = HAL_GetTick();
-    retries = 0;
+    levelRepeatCount = 0;
 
     // Critical section to avoid concurrent access to the input variable
     keyscanDisableIrq();
@@ -288,7 +270,8 @@ static void stateUserInputProcess()
         levelIdx++;
         oledShowSequence("Input");
         Note n = keyNoteMap[levelKey];
-        notePlayerPlayNote(n.note, n.duration);
+        uint32_t duration = gameSpeedToDuration[settings.speed];
+        notePlayerPlayNote(n.note, duration);
         effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[levelKey], n.duration, n.duration);
         if (levelIdx >= currentLevelSeqIdx) {
             gameStateProcessEvent(EVENT_INPUT_CORRECT);
@@ -301,7 +284,6 @@ static void stateUserInputProcess()
 
 static void stateSuccessEnter()
 {
-    lastProcessMs = HAL_GetTick();
     effectManagerStopAllEffects();
     effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 500, 500 / 4);
     notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
@@ -336,7 +318,6 @@ static void stateSuccessProcess()
 
 static void stateFailEnter()
 {
-    lastProcessMs = HAL_GetTick();
     effectManagerStopAllEffects();
     effectManagerPlayEffect(EFFECT_BLINK, LED_RED, 500, 500 / 4);
     notePlayerPlayMelody(getMelody(MelodyFail), getMelodyLength(MelodyFail));
@@ -355,7 +336,6 @@ static void stateFailProcess()
 
 static void statePowerOffEnter()
 {
-    lastProcessMs = HAL_GetTick();
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize16);
@@ -376,7 +356,6 @@ static void statePowerOffProcess()
 
 static void stateMenuEnter()
 {
-    lastProcessMs = HAL_GetTick();
     input.state = 0;
     gameMenuInit();
 }
@@ -393,7 +372,6 @@ static void stateMenuProcess()
         return;
     }
 
-    lastProcessMs = HAL_GetTick();
     // Critical section to avoid concurrent access to the input variable
     keyscanDisableIrq();
     Keys userInput = input; // copy state, should be atomic operation
@@ -411,14 +389,6 @@ static void stateMenuProcess()
     }
 }
 
-static void processStateTimeout()
-{
-    uint32_t stateTimeoutMs = gameStateGetTimeout();
-    if (stateTimeoutMs && isTimeoutHappened(stateTimeoutMs)) {
-        gameStateProcessEvent(EVENT_STATE_TIMEOUT);
-    }
-}
-
 void gameInit()
 {
     // State definition table
@@ -427,7 +397,7 @@ void gameInit()
         [GAME_STATE_INIT]          = {stateInitEnter, NULL , stateInitProcess, INIT_STATE_TIMEOUT_MS},
         [GAME_STATE_IDLE]          = {stateIdleEnter, NULL, stateIdleProcess, POWER_OFF_TIMEOUT_MS},
         [GAME_STATE_SHOWING_LEVEL] = {stateShowLevelEnter, stateShowLevelExit, stateShowLevelProcess, 0},
-        [GAME_STATE_USER_INPUT]    = {stateUserInputEnter, NULL, stateUserInputProcess, 0},
+        [GAME_STATE_USER_INPUT]    = {stateUserInputEnter, NULL, stateUserInputProcess, USER_INPUT_TIMEOUT_MS},
         [GAME_STATE_SUCCESS]       = {stateSuccessEnter, stateSuccessProcess, NULL, SUCCESS_STATE_TIMEOUT_MS},
         [GAME_STATE_FAILED]        = {stateFailEnter, stateFailProcess, NULL, FAILURE_STATE_TIMEOUT_MS},
         [GAME_STATE_OFF]           = {statePowerOffEnter, NULL, statePowerOffProcess, 0},
@@ -440,6 +410,5 @@ void gameInit()
 void gameProcess()
 {
     gameStateProcess();
-    processStateTimeout();
     effectManagerProcess();
 }

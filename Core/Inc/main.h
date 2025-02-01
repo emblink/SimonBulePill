@@ -57,6 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SLEEP_TRACK_PIN_Pin GPIO_PIN_1
+#define SLEEP_TRACK_PIN_GPIO_Port GPIOA
+#define VBAT_LEVEL_Pin GPIO_PIN_5
+#define VBAT_LEVEL_GPIO_Port GPIOA
 #define LED_RED_Pin GPIO_PIN_6
 #define LED_RED_GPIO_Port GPIOA
 #define LED_GREEN_Pin GPIO_PIN_7
@@ -65,7 +69,7 @@ void Error_Handler(void);
 #define LED_BLUE_GPIO_Port GPIOB
 #define LED_YELLOW_Pin GPIO_PIN_1
 #define LED_YELLOW_GPIO_Port GPIOB
-#define KEY_MENU_Pin GPIO_PIN_11
+#define KEY_MENU_Pin GPIO_PIN_10
 #define KEY_MENU_GPIO_Port GPIOB
 #define KEY_MENU_EXTI_IRQn EXTI15_10_IRQn
 #define KEY_YELLOW_Pin GPIO_PIN_12
@@ -80,8 +84,6 @@ void Error_Handler(void);
 #define KEY_RED_Pin GPIO_PIN_15
 #define KEY_RED_GPIO_Port GPIOB
 #define KEY_RED_EXTI_IRQn EXTI15_10_IRQn
-#define LED_BOARD_Pin GPIO_PIN_8
-#define LED_BOARD_GPIO_Port GPIOA
 #define AMP_MUTE_Pin GPIO_PIN_4
 #define AMP_MUTE_GPIO_Port GPIOB
 #define AMP_SHUTDOWN_Pin GPIO_PIN_5

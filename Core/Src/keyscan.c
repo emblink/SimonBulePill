@@ -37,7 +37,7 @@ void keyscanProcess()
 
 	for (int key = KEY_RED; key < KEY_COUNT; key++) {
 		GPIO_PinState state = HAL_GPIO_ReadPin(keyTable[key].port, keyTable[key].pin);
-		if (GPIO_PIN_SET == state) {
+		if (GPIO_PIN_RESET == state) {
 			keyThreshold[key]++;
 			if (keyThreshold[key] >= PRESSED_THRESHOLD) {
 				if (true == keyState[key]) {
