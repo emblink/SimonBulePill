@@ -13,6 +13,7 @@
 #include "fontSize.h"
 #include "gameMenu.h"
 #include "audioAmplifier.h"
+#include "batteryManager.h"
 
 // Time constants
 #define SECOND 1000
@@ -41,7 +42,6 @@ typedef union {
 // Nessesary
 // TODO: fix the transition stuck with the sleep mode enabled
 // TODO: Add MCU Standby mode wake up from any pin interrupt
-// TODO: Add ADC and battery level monitoring
 
 // Optional
 // TODO: Add a game mode single player, player vs player
@@ -57,6 +57,8 @@ static uint32_t levelIdx = 0;
 static volatile Keys input = {0};
 static uint32_t levelRepeatCount = 0;
 static GameSettings settings = {0};
+static uint32_t batteryCharge = 0;
+static uint32_t lastBatteryCheckMs = 0;
 
 static const Note keyNoteMap[] = {
     [KEY_RED] = { NOTE_C4, 0 },
@@ -77,6 +79,29 @@ static const uint32_t gameSpeedToDuration[] = {
     [GAME_SPEED_MEDIUM] = 500,
     [GAME_SPEED_HIGH] = 250,
 };
+
+static void batteryCheck()
+{
+    batteryCharge = batteryManagerGetPercent();
+}
+
+static void batteryProcess()
+{
+    uint32_t currentTick = HAL_GetTick();
+    if (currentTick - lastBatteryCheckMs > 5 * MINUTE) {
+        lastBatteryCheckMs = currentTick;
+        batteryCheck();
+    }
+
+    if (0 == batteryCharge) {
+        gameStateProcessEvent(EVENT_BATTERY_LOW);
+    }
+
+    OLED_SetCursor(105, 0);
+    OLED_SetTextSize(FontSize12);
+    OLED_Printf("%i", batteryCharge);
+    OLED_UpdateScreen();
+}
 
 static inline void ledOn()
 {
@@ -119,6 +144,7 @@ static void onKeyPressCallback(Key key, bool isPressed)
 
 static void stateInitEnter()
 {
+    batteryCheck();
     audioAmplifierInit();
     OLED_Init(&hi2c1);
     OLED_FillScreen(Black);
@@ -411,4 +437,5 @@ void gameProcess()
 {
     gameStateProcess();
     effectManagerProcess();
+    batteryProcess();
 }

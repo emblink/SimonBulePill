@@ -1,7 +1,6 @@
 #include "levels.h"
 #include <stdlib.h>
-
-#define ELEMENTS(arr) (sizeof(arr) / sizeof((arr)[0]))
+#include "generic.h"
 
 static const uint8_t level1[] = {
     KEY_GREEN, KEY_BLUE, KEY_GREEN, KEY_RED, KEY_YELLOW,
