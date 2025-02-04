@@ -96,11 +96,13 @@ static void batteryProcess()
     if (0 == batteryCharge) {
         gameStateProcessEvent(EVENT_BATTERY_LOW);
     }
+}
 
+static void showBatteryCharge()
+{
     OLED_SetCursor(105, 0);
     OLED_SetTextSize(FontSize12);
     OLED_Printf("%i", batteryCharge);
-    OLED_UpdateScreen();
 }
 
 static inline void ledOn()
@@ -205,6 +207,7 @@ static void oledShowSequence(const char stateStr[])
                 LEVEL_COUNT / 10, LEVEL_COUNT % 10);
     OLED_Printf("%s:%i%i/%i%i", stateStr, levelIdx / 10, levelIdx % 10,
                 currentLevelSeqIdx / 10, currentLevelSeqIdx % 10);
+    showBatteryCharge();
     OLED_UpdateScreen();
 }
 
