@@ -1,7 +1,7 @@
 #include "notePlayer.h"
 #include "tim.h"
+#include "generic.h"
 
-#define ELEMENTS(arr) (sizeof(arr) / sizeof((arr)[0]))
 static PlaybackCb startedCb = NULL;
 static PlaybackCb finishedCb = NULL;
 

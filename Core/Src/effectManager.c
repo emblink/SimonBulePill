@@ -1,8 +1,8 @@
 #include "effectManager.h"
 #include "notePlayer.h"
 #include "tim.h"
+#include "generic.h"
 
-#define ELEMENTS(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define EFFECT_MAXIMUM_FRAMES 5
 
 typedef struct {
