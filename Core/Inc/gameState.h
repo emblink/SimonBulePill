@@ -5,4 +5,5 @@ void gameStateInit(const GameStateDef *stateDefs);
 void gameStateProcessEvent(Event event);
 void gameStateProcess(void);
 GameState gameStateGetCurrentState();
-uint32_t gameStateGetNextProcessTime();
+uint32_t gameStateGetNextProcessInterval();
+void gameStateResetTimeout();

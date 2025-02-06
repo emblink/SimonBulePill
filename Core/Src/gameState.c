@@ -4,6 +4,7 @@
 #include "gameState.h"
 #include "gameStateTransitions.h"
 #include "stm32f1xx_hal.h"
+#include "generic.h"
 
 static const GameStateDef *stateDefs = NULL;
 static GameState currentState = GAME_STATE_NONE;
@@ -37,16 +38,11 @@ static uint32_t gameStateGetTimeout(void)
     return stateDefs[currentState].timeoutMs;
 }
 
-static inline bool isTimeoutHappened(uint32_t lastProcessMs, uint32_t timeoutMs)
-{
-    return HAL_GetTick() - lastProcessMs >= timeoutMs;
-}
-
 static void gameStateProcessTimeout()
 {
     uint32_t stateTimeoutMs = gameStateGetTimeout();
     if (stateTimeoutMs && isTimeoutHappened(stateEnterMs, stateTimeoutMs)) {
-        gameStateProcessEvent(EVENT_STATE_TIMEOUT);
+    	gameStateProcessEvent(EVENT_STATE_TIMEOUT);
     }
 }
 
@@ -87,17 +83,27 @@ GameState gameStateGetCurrentState()
     return currentState;
 }
 
-uint32_t gameStateGetNextProcessTime()
+uint32_t gameStateGetNextProcessInterval()
 {
     uint32_t currentTick = HAL_GetTick();
+    uint32_t nextProcessTick = 0;
     if (GAME_STATE_TRANSITION == currentState) {
-        return transitionStartMs + transitionTimeoutMs;
+        nextProcessTick = transitionStartMs + transitionTimeoutMs;
     }
 
     uint32_t stateTimeout = gameStateGetTimeout();
     if (stateTimeout) {
-        return stateEnterMs + stateTimeout;
+        nextProcessTick = stateEnterMs + stateTimeout;
     }
 
-    return 0;
+    if (0 == nextProcessTick) {
+        return 0;
+    }
+
+    return nextProcessTick - currentTick;
+}
+
+void gameStateResetTimeout()
+{
+    stateEnterMs = HAL_GetTick();
 }

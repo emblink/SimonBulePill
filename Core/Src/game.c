@@ -40,7 +40,6 @@ typedef union {
 } Keys;
 
 // Nessesary
-// TODO: fix the transition stuck with the sleep mode enabled
 // TODO: Add MCU Standby mode wake up from any pin interrupt
 
 // Optional
@@ -296,6 +295,7 @@ static void stateUserInputProcess()
     keyscanEnableIrq();
     const Key levelKey = currentLevel->sequence[levelIdx];
     if (userInput.state & (1 << levelKey)) {
+        gameStateResetTimeout();
         levelIdx++;
         oledShowSequence("Input");
         Note n = keyNoteMap[levelKey];
@@ -406,6 +406,7 @@ static void stateMenuProcess()
     Keys userInput = input; // copy state, should be atomic operation
     input.state &= ~userInput.state; // reset input state bits
     keyscanEnableIrq();
+    gameStateResetTimeout();
 
     if (userInput.blue) {
         gameMenuProcessAction(MENU_ACTION_UP);

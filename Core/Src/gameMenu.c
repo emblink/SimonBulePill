@@ -5,6 +5,7 @@
 #include "levels.h"
 #include "gameStateDefines.h"
 #include "gameState.h"
+#include "generic.h"
 
 #define MENU_UPDATE_INTERVAL_MS 100
 #define MENU_HIGHLIGHT_INTERVAL_MS 250
@@ -80,11 +81,6 @@ static uint8_t * itemToSettingValue[] = {
     [MENU_ITEM_MODE] = &settings.mode,
     [MENU_ITEM_SEQUENCE] = &settings.sequence
 };
-
-static inline bool isTimeoutHappened(uint32_t lastProcessMs, uint32_t timeoutMs)
-{
-    return HAL_GetTick() - lastProcessMs >= timeoutMs;
-}
 
 static const char * settingsGetString(MenuItem item)
 {

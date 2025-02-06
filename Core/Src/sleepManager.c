@@ -77,11 +77,7 @@ static void enterStopMode(uint32_t sleepDurationMs)
     HAL_RTC_GetTime(&hrtc, &wakeUpTime, RTC_FORMAT_BIN);
     uint32_t sleepMs = wakeUpTime.Hours * 3600 + wakeUpTime.Minutes * 60 + wakeUpTime.Seconds;
     extern __IO uint32_t uwTick;
-    if (sleepMs < sleepDurationMs) {
-        uwTick += sleepDurationMs - sleepMs;
-    } else {
-        uwTick += sleepMs;
-    }
+    uwTick += sleepMs; // add sleep time to current time
 
     rtcAlarmDisable();
     if (rtcWakeupFlag) {
@@ -101,7 +97,6 @@ static void enterStandbyMode()
 
 void sleepManagerProcess()
 {
-    // __disable_irq();
     bool isSoundPlaying = notePlayerIsPlaying();
     bool isEffectPlaying = effectManagerIsPlaying();
     bool isKeyScanRunning = keyscanIsRunning();
@@ -114,16 +109,13 @@ void sleepManagerProcess()
         }
     }
 
+    uint32_t sleepMs = gameStateGetNextProcessInterval();
     if (isSoundPlaying || isKeyScanRunning || isEffectPlaying) {
         __WFI();
     } else {
-        uint32_t sleepMs = gameStateGetNextProcessTime() - HAL_GetTick();
         if (sleepMs) {
             enterStopMode(sleepMs);
-        } else {
-            __WFI();
         }
     }
-    // __enable_irq();
     // HAL_IWDG_Refresh(&hiwdg);
 }
