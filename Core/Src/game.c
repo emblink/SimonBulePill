@@ -43,6 +43,7 @@ typedef union {
 // TODO: Add MCU Standby mode wake up from any pin interrupt
 
 // Optional
+// TODO: Add IDLE state effect on the screen
 // TODO: Add a game mode single player, player vs player
 // TODO: Refactor, put all global variables to a struct
 // TODO: Add hello/happy/sad/sleepping cat animation
@@ -172,7 +173,6 @@ static void stateInitProcess()
 static void stateIdleEnter()
 {
     effectManagerStopAllEffects();
-    effectManagerPlayEffect(EFFECT_BREATHE, LED_GREEN, 0, 2000);
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize16);
@@ -184,7 +184,7 @@ static void stateIdleEnter()
 
 static void stateIdleProcess()
 {
-    if (input.green) {
+    if (input.green || input.red || input.blue || input.yellow) {
         effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 300, 300 / 4);
         notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
         gameStateProcessEvent(EVENT_INPUT_RECEIVED);
