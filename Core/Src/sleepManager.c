@@ -9,6 +9,8 @@
 #include "effectManager.h"
 #include "keyscan.h"
 #include "gameState.h"
+#include "generic.h"
+#include "stm32f1xx_ll_pwr.h"
 
 #define APM_MUTE_TIMEOUT_MS 250
 
@@ -42,6 +44,7 @@ void sleepManagerInit()
     RTC_TimeTypeDef sTime = {0};
     HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
     HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+    HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN1);
 }
 
 static void rtcAlarmEnable(uint32_t sleepDurationMs)
@@ -92,7 +95,13 @@ static void enterStopMode(uint32_t sleepDurationMs)
 
 static void enterStandbyMode()
 {
-
+    rtcAlarmDisable();
+    // Clear WUF bit in Power Control/Status register (PWR_CSR) upon Standby mode entry
+    // This bit is set by hardware to indicate that the device received a wake-up event.
+    // It is cleared by a system reset or by setting the CWUF bit in the Power control register (PWR_CR)
+    LL_PWR_ClearFlag_WU();
+    HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1);
+    HAL_PWR_EnterSTANDBYMode();
 }
 
 void sleepManagerProcess()
@@ -101,10 +110,15 @@ void sleepManagerProcess()
     bool isEffectPlaying = effectManagerIsPlaying();
     bool isKeyScanRunning = keyscanIsRunning();
 
+    if (GAME_STATE_OFF == gameStateGetCurrentState()) {
+        audioAmplifierMute(true);
+        enterStandbyMode();
+    }
+
     if (isSoundPlaying) {
         lastPlaybackMs = HAL_GetTick();
     } else {
-        if (!audioAmplifierIsMuted() && HAL_GetTick() - lastPlaybackMs >= APM_MUTE_TIMEOUT_MS) {
+        if (!audioAmplifierIsMuted() && isTimeoutHappened(lastPlaybackMs, APM_MUTE_TIMEOUT_MS)) {
             audioAmplifierMute(true);
         }
     }

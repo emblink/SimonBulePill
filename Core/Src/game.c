@@ -370,6 +370,8 @@ static void statePowerOffEnter()
     OLED_SetTextSize(FontSize16);
     OLED_Printf(" SLEEP");
     OLED_UpdateScreen();
+    HAL_Delay(1000);
+    OLED_DisplayOff();
     effectManagerPlayPowerOff();
     // add power off animation and sound
     // Shut down MCU
