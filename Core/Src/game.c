@@ -301,7 +301,7 @@ static void stateUserInputProcess()
         Note n = keyNoteMap[levelKey];
         uint32_t duration = gameSpeedToDuration[settings.speed];
         notePlayerPlayNote(n.note, duration);
-        effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[levelKey], n.duration, n.duration);
+        effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[levelKey], duration, duration);
         if (levelIdx >= currentLevelSeqIdx) {
             gameStateProcessEvent(EVENT_INPUT_CORRECT);
         }
