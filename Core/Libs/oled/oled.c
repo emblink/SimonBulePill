@@ -360,6 +360,11 @@ void OLED_FillScreen(OLED_Color_t color) {
 	memset(OLED_Buffer, (color == Black) ? 0x00 : 0xFF, OLEDWIDTH * OLEDHEIGHT / 8);
 }
 
+void OLED_DrawImage(const uint8_t *img)
+{
+	memcpy(OLED_Buffer, img, sizeof(OLED_Buffer));
+}
+
 #if defined(OLED_COLORZONE)
 void OLED_ToggleInvert(OLED_Zone_t zone) {
 	uint16_t start = 0, end = 0;
