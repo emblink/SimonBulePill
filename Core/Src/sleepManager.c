@@ -95,6 +95,7 @@ static void enterStopMode(uint32_t sleepDurationMs)
 
 static void enterStandbyMode()
 {
+    audioAmplifierShutdown(true);
     rtcAlarmDisable();
     // Clear WUF bit in Power Control/Status register (PWR_CSR) upon Standby mode entry
     // This bit is set by hardware to indicate that the device received a wake-up event.

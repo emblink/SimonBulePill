@@ -40,7 +40,7 @@ typedef union {
 } Keys;
 
 // Nessesary
-// TODO: Add MCU Standby mode wake up from any pin interrupt
+
 
 // Optional
 // TODO: Add IDLE state effect on the screen
