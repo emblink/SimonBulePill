@@ -225,7 +225,7 @@ static const Animation animations[] = {
         .name = ANIM_HELLO,
         .frames = (AnimationFrame *) pusheenHello,
         .frameCount = sizeof(pusheenHello) / sizeof(AnimationFrame),
-        .frameDelayMs = 500,
+        .frameDelayMs = 250,
     },
     [ANIM_HAPPY] = {
         .name = ANIM_HAPPY,

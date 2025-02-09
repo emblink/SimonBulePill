@@ -200,6 +200,7 @@ static void setEffect(Effect effect, Led led, uint32_t duration, uint32_t period
 		};
 	}
 }
+
 void effectManagerPlayEffect(Effect effect, Led led, uint32_t duration, uint32_t period)
 {
 	if (LED_ALL == led) {
@@ -213,30 +214,27 @@ void effectManagerPlayEffect(Effect effect, Led led, uint32_t duration, uint32_t
 
 void effectManagerPlayPowerOn()
 {
-	int delay = 1;
-    for (int i = 0; i <= 250; i++) { // Ramp up (0-255 PWM value)
-    	setLedPwm(LED_RED, i);
-        HAL_Delay(delay); // Adjust for smoother ramp
-    }
-    for (int i = 0; i <= 250; i++) {
-    	setLedPwm(LED_BLUE, i);
-        HAL_Delay(delay);
-    }
-    for (int i = 0; i <= 250; i++) {
-    	setLedPwm(LED_YELLOW, i);
-        HAL_Delay(delay);
-    }
-    for (int i = 0; i <= 250; i++) {
-    	setLedPwm(LED_GREEN, i);
-        HAL_Delay(delay);
-    }
-    HAL_Delay(250); // Hold full brightness
-    for (int i = 250; i > 0; i--) { // Ramp down
-    	setLedPwm(LED_RED, i);
-    	setLedPwm(LED_BLUE, i);
-    	setLedPwm(LED_YELLOW, i);
-    	setLedPwm(LED_GREEN, i);
-        HAL_Delay(delay); // Adjust for smoother ramp
+    const uint32_t rumpDuration = 500;
+    const uint32_t totalDuration = rumpDuration * 4 + rumpDuration * 2;
+    // Power on sequence Red -> Blue -> Yellow -> Green
+    static const Led leds[] = {LED_RED, LED_BLUE, LED_YELLOW, LED_GREEN};
+
+    for (int i = 0; i < ELEMENTS(leds); i++) {
+        effects[leds[i]] = (EffectSettings) {
+            .effect = EFFECT_STATIC,
+            .startTime = 0,
+            .totalDuration = totalDuration,
+            .lastUpdateMs = 0,
+            .currentTrans = 0,
+            .totalTransNum = 4,
+            .trans = {
+                { .startTime = 0, .duration = rumpDuration * i, .startValue = 0, .endValue = 0 }, // Led off
+                { .startTime = 0, .duration = rumpDuration, .startValue = 0, .endValue = 255 }, // Ramp up
+                // Maintain full brightness for one rumpDuration after the last led is ramped up
+                { .startTime = 0, .duration = rumpDuration * 4 - rumpDuration * i, .startValue = 255, .endValue = 255 },
+                { .startTime = 0, .duration = rumpDuration, .startValue = 255, .endValue = 0 }  // Ramp down
+            }
+        };
     }
 }
 

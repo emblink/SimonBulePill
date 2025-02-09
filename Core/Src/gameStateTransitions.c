@@ -6,7 +6,7 @@ static const StateTransition stateTransitionTable[GAME_STATE_COUNT][EVENT_COUNT]
         [EVENT_START] = { GAME_STATE_INIT, NULL, 0 },
     },
     [GAME_STATE_INIT] = {
-        [EVENT_STATE_TIMEOUT] = { GAME_STATE_IDLE, NULL, 0 },
+        [EVENT_INITED] = { GAME_STATE_IDLE, NULL, 0 },
     },
     [GAME_STATE_IDLE] = {
         [EVENT_INPUT_RECEIVED] = { GAME_STATE_SHOWING_LEVEL, NULL, 750 },

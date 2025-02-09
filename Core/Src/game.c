@@ -24,7 +24,6 @@
 #define USER_INPUT_TIMEOUT_MS (10 * SECOND)
 #define LEVEL_REPEAT_LIMIT 3
 #define POWER_OFF_TIMEOUT_MS (1 * MINUTE)
-#define INIT_STATE_TIMEOUT_MS (1 * SECOND)
 #define SUCCESS_STATE_TIMEOUT_MS (750)
 #define FAILURE_STATE_TIMEOUT_MS (750)
 #define MENU_TIMEOUT_MS (1 * MINUTE)
@@ -129,7 +128,10 @@ static void onPlaybackStarted()
 
 static void onEffectFinished(Led led)
 {
-
+    if (GAME_STATE_INIT == gameStateGetCurrentState())
+    {
+        gameStateProcessEvent(EVENT_INITED);
+    }
 }
 
 static void onKeyPressCallback(Key key, bool isPressed)
@@ -414,7 +416,7 @@ void gameInit()
     // State definition table
     static const GameStateDef stateDefs[] = {
         [GAME_STATE_NONE]          = {NULL, NULL, NULL, 0},
-        [GAME_STATE_INIT]          = {stateInitEnter, stateInitExit, NULL, INIT_STATE_TIMEOUT_MS},
+        [GAME_STATE_INIT]          = {stateInitEnter, stateInitExit, NULL, 0},
         [GAME_STATE_IDLE]          = {stateIdleEnter, stateIdleExit, stateIdleProcess, POWER_OFF_TIMEOUT_MS},
         [GAME_STATE_SHOWING_LEVEL] = {stateShowLevelEnter, stateShowLevelExit, stateShowLevelProcess, 0},
         [GAME_STATE_USER_INPUT]    = {stateUserInputEnter, NULL, stateUserInputProcess, USER_INPUT_TIMEOUT_MS},
