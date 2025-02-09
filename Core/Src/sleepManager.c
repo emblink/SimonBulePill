@@ -11,6 +11,7 @@
 #include "gameState.h"
 #include "generic.h"
 #include "stm32f1xx_ll_pwr.h"
+#include "animationSystem.h"
 
 #define APM_MUTE_TIMEOUT_MS 250
 
@@ -124,10 +125,12 @@ void sleepManagerProcess()
         }
     }
 
-    uint32_t sleepMs = gameStateGetNextProcessInterval();
     if (isSoundPlaying || isKeyScanRunning || isEffectPlaying) {
         __WFI();
     } else {
+        uint32_t nextStateUpdate = gameStateGetNextProcessInterval();
+        uint32_t nextAnimationUpdate = animationSystemGetNextUpdateInterval();
+        uint32_t sleepMs = nextStateUpdate < nextAnimationUpdate ? nextStateUpdate : nextAnimationUpdate;
         if (sleepMs) {
             enterStopMode(sleepMs);
         }

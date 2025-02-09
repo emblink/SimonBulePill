@@ -14,6 +14,7 @@
 #include "gameMenu.h"
 #include "audioAmplifier.h"
 #include "batteryManager.h"
+#include "animationSystem.h"
 
 // Time constants
 #define SECOND 1000
@@ -40,13 +41,12 @@ typedef union {
 } Keys;
 
 // Nessesary
+// Fix fw stuck after standby wake up
 
 
 // Optional
-// TODO: Add IDLE state effect on the screen
 // TODO: Add a game mode single player, player vs player
 // TODO: Refactor, put all global variables to a struct
-// TODO: Add hello/happy/sad/sleepping cat animation
 // TODO: Add transition to Idle state sound
 // TODO: Add power off animation
 
@@ -150,9 +150,6 @@ static void stateInitEnter()
     audioAmplifierInit();
     OLED_Init(&hi2c1);
     OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize16);
-    OLED_Printf(" SIMON!");
     OLED_UpdateScreen();
     if (!gameSettingsRead(&settings)) {
         gameSettingsReset();
@@ -163,23 +160,24 @@ static void stateInitEnter()
     effectManagerInit(&onEffectFinished);
     notePlayerPlayMelody(getMelody(MelodyPowerOn), getMelodyLength(MelodyPowerOn));
     effectManagerPlayPowerOn();
+    animationSystemPlay(ANIM_HELLO, true);
 }
 
-static void stateInitProcess()
+static void stateInitExit()
 {
-    // show cat wake up animation here
+    animationSystemStop();
 }
 
 static void stateIdleEnter()
 {
     effectManagerStopAllEffects();
-    OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize16);
-    // show cat sleep animation here
-    OLED_Printf("  IDLE");
-    OLED_UpdateScreen();
+    animationSystemPlay(ANIM_SLEEP, true);
     input.state = 0; // reset input state
+}
+
+static void stateIdleExit()
+{
+	animationSystemStop();
 }
 
 static void stateIdleProcess()
@@ -332,17 +330,12 @@ static void stateSuccessEnter()
     }
     levelIdx = 0;
 
-    // show happy cat
-    OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize16);
-    OLED_Printf("SUCCESS");
-    OLED_UpdateScreen();
+    animationSystemPlay(ANIM_HAPPY, true);
 }
 
-static void stateSuccessProcess()
+static void stateSuccessExit()
 {
-
+    animationSystemStop();
 }
 
 static void stateFailEnter()
@@ -350,17 +343,12 @@ static void stateFailEnter()
     effectManagerStopAllEffects();
     effectManagerPlayEffect(EFFECT_BLINK, LED_RED, 500, 500 / 4);
     notePlayerPlayMelody(getMelody(MelodyFail), getMelodyLength(MelodyFail));
-    // show sad cat here
-    OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize16);
-    OLED_Printf(" FAILED");
-    OLED_UpdateScreen();
+    animationSystemPlay(ANIM_SAD, true);
 }
 
-static void stateFailProcess()
+static void stateFailExit()
 {
-
+    animationSystemStop();
 }
 
 static void statePowerOffEnter()
@@ -426,12 +414,12 @@ void gameInit()
     // State definition table
     static const GameStateDef stateDefs[] = {
         [GAME_STATE_NONE]          = {NULL, NULL, NULL, 0},
-        [GAME_STATE_INIT]          = {stateInitEnter, NULL , stateInitProcess, INIT_STATE_TIMEOUT_MS},
-        [GAME_STATE_IDLE]          = {stateIdleEnter, NULL, stateIdleProcess, POWER_OFF_TIMEOUT_MS},
+        [GAME_STATE_INIT]          = {stateInitEnter, stateInitExit, NULL, INIT_STATE_TIMEOUT_MS},
+        [GAME_STATE_IDLE]          = {stateIdleEnter, stateIdleExit, stateIdleProcess, POWER_OFF_TIMEOUT_MS},
         [GAME_STATE_SHOWING_LEVEL] = {stateShowLevelEnter, stateShowLevelExit, stateShowLevelProcess, 0},
         [GAME_STATE_USER_INPUT]    = {stateUserInputEnter, NULL, stateUserInputProcess, USER_INPUT_TIMEOUT_MS},
-        [GAME_STATE_SUCCESS]       = {stateSuccessEnter, stateSuccessProcess, NULL, SUCCESS_STATE_TIMEOUT_MS},
-        [GAME_STATE_FAILED]        = {stateFailEnter, stateFailProcess, NULL, FAILURE_STATE_TIMEOUT_MS},
+        [GAME_STATE_SUCCESS]       = {stateSuccessEnter, stateSuccessExit, NULL, SUCCESS_STATE_TIMEOUT_MS},
+        [GAME_STATE_FAILED]        = {stateFailEnter, stateFailExit, NULL, FAILURE_STATE_TIMEOUT_MS},
         [GAME_STATE_OFF]           = {statePowerOffEnter, NULL, statePowerOffProcess, 0},
         [GAME_STATE_MENU]          = {stateMenuEnter, stateMenuExit, stateMenuProcess, MENU_TIMEOUT_MS},
     };
@@ -443,5 +431,6 @@ void gameProcess()
 {
     gameStateProcess();
     effectManagerProcess();
+    animationSystemProcess();
     batteryProcess();
 }
