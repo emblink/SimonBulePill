@@ -42,7 +42,9 @@ void keyscanProcess()
 			if (keyThreshold[key] >= PRESSED_THRESHOLD) {
 				if (true == keyState[key]) {
 					keyState[key] = false;
-					keyCb(key, keyState[key]);
+                    if (keyCb) {
+                        keyCb(key, keyState[key]);
+                    }
 				}
 			}
 		} else {
@@ -50,7 +52,9 @@ void keyscanProcess()
 			if (keyThreshold[key] <= RELEASED_THRESHOLD) {
 				if (false == keyState[key]) {
 					keyState[key] = true;
-					keyCb(key, keyState[key]);
+                    if (keyCb) {
+                        keyCb(key, keyState[key]);
+                    }
 				}
 			}
 		}
