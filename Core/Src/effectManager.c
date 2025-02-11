@@ -39,7 +39,6 @@ uint8_t interpolate(int32_t start, int32_t end, uint32_t elapsed, uint32_t durat
 
 static void setLedPwm(Led led, int pwm)
 {
-	pwm = 255 - pwm; // Invert PWM value (0 = full brightness)
 	switch (led) {
 	case LED_RED: TIM3->CCR1 = pwm; break;
 	case LED_GREEN: TIM3->CCR2 = pwm; break;
@@ -59,6 +58,8 @@ void effectManagerInit(EffectFinishedCallback callback)
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+    // Initing timer GPIO pins here to avoid initial LED blink
+    HAL_TIM_MspPostInit(&htim3);
 }
 
 void effectManagerProcess(void)
