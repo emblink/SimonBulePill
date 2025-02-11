@@ -40,7 +40,7 @@ typedef union {
 } Keys;
 
 // Nessesary
-// Fix fw stuck after standby wake up
+// TODO: Fix sound hiccup after Fail -> Showing state transition
 
 
 // Optional
@@ -128,10 +128,7 @@ static void onPlaybackStarted()
 
 static void onEffectFinished(Led led)
 {
-    if (GAME_STATE_INIT == gameStateGetCurrentState())
-    {
-        gameStateProcessEvent(EVENT_INITED);
-    }
+
 }
 
 static void onKeyPressCallback(Key key, bool isPressed)
@@ -163,6 +160,20 @@ static void stateInitEnter()
     notePlayerPlayMelody(getMelody(MelodyPowerOn), getMelodyLength(MelodyPowerOn));
     effectManagerPlayPowerOn();
     animationSystemPlay(ANIM_HELLO, true);
+}
+
+static void stateInitProcess()
+{
+    if (effectManagerIsPlaying()) {
+        return;
+    }
+
+    if (input.green || input.red || input.blue || input.yellow) {
+        effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 300, 300 / 4);
+        notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
+        gameStateProcessEvent(EVENT_INPUT_RECEIVED);
+        levelRepeatCount = 0;
+    }
 }
 
 static void stateInitExit()
@@ -416,7 +427,7 @@ void gameInit()
     // State definition table
     static const GameStateDef stateDefs[] = {
         [GAME_STATE_NONE]          = {NULL, NULL, NULL, 0},
-        [GAME_STATE_INIT]          = {stateInitEnter, stateInitExit, NULL, 0},
+        [GAME_STATE_INIT]          = {stateInitEnter, stateInitExit, stateInitProcess, USER_INPUT_TIMEOUT_MS},
         [GAME_STATE_IDLE]          = {stateIdleEnter, stateIdleExit, stateIdleProcess, POWER_OFF_TIMEOUT_MS},
         [GAME_STATE_SHOWING_LEVEL] = {stateShowLevelEnter, stateShowLevelExit, stateShowLevelProcess, 0},
         [GAME_STATE_USER_INPUT]    = {stateUserInputEnter, NULL, stateUserInputProcess, USER_INPUT_TIMEOUT_MS},
