@@ -49,7 +49,6 @@ typedef union {
 // TODO: Add transition to Idle state sound
 // TODO: Add power off animation
 
-static uint32_t currentLevelNum = LEVEL_1;
 static const Level * currentLevel = {0};
 static uint32_t currentLevelSeqIdx = 1;
 static uint32_t levelIdx = 0;
@@ -213,7 +212,7 @@ static void oledShowSequence(const char stateStr[])
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize12);
-    OLED_Printf("Lvl:%i%i/%i%i\n", (currentLevelNum + 1) / 10, (currentLevelNum + 1) % 10,
+    OLED_Printf("Lvl:%i%i/%i%i\n", (settings.level + 1) / 10, (settings.level + 1) % 10,
                 LEVEL_COUNT / 10, LEVEL_COUNT % 10);
     OLED_Printf("%s:%i%i/%i%i", stateStr, levelIdx / 10, levelIdx % 10,
                 currentLevelSeqIdx / 10, currentLevelSeqIdx % 10);
@@ -234,10 +233,10 @@ static void stateShowLevelEnter()
     }
 
     if (GAME_SEQUENCE_STATIC == settings.sequence) {
-        currentLevel = levelsGetStaticLevel(currentLevelNum);
+        currentLevel = levelsGetStaticLevel(settings.level);
     } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
-        levelsGenerateRandomLevel(currentLevelNum);
-        currentLevel = levelsGetRandomLevel(currentLevelNum);
+        levelsGenerateRandomLevel(settings.level);
+        currentLevel = levelsGetRandomLevel(settings.level);
     }
     oledShowSequence("Showing");
 }
@@ -329,16 +328,16 @@ static void stateSuccessEnter()
     notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
     currentLevelSeqIdx++;
     if (currentLevelSeqIdx > currentLevel->keyCount) {
-        currentLevelNum = (currentLevelNum + 1) % LEVEL_COUNT;
+        settings.level = (settings.level + 1) % LEVEL_COUNT;
         if (GAME_SEQUENCE_STATIC == settings.sequence) {
-            currentLevel = levelsGetStaticLevel(currentLevelNum);
+            currentLevel = levelsGetStaticLevel(settings.level);
         } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
-            levelsGenerateRandomLevel(currentLevelNum);
-            currentLevel = levelsGetRandomLevel(currentLevelNum);
+            levelsGenerateRandomLevel(settings.level);
+            currentLevel = levelsGetRandomLevel(settings.level);
         }
         currentLevelSeqIdx = 1;
         gameSettingsRead(&settings);
-        settings.level = currentLevelNum;
+        settings.level = settings.level;
         gameSettingsWrite(&settings);
     }
     levelIdx = 0;
