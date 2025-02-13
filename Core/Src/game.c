@@ -49,7 +49,7 @@ typedef union {
 // TODO: Add transition to Idle state sound
 // TODO: Add power off animation
 
-static const Level * currentLevel = {0};
+static const Level * currentLevel = NULL;
 static uint32_t currentLevelSeqIdx = 1;
 static uint32_t levelIdx = 0;
 static volatile Keys input = {0};
@@ -235,8 +235,10 @@ static void stateShowLevelEnter()
     if (GAME_SEQUENCE_STATIC == settings.sequence) {
         currentLevel = levelsGetStaticLevel(settings.level);
     } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
-        levelsGenerateRandomLevel(settings.level);
-        currentLevel = levelsGetRandomLevel(settings.level);
+        if (NULL == currentLevel) {
+            levelsGenerateRandomLevel(settings.level);
+            currentLevel = levelsGetRandomLevel(settings.level);
+        }
     }
     oledShowSequence("Showing");
 }
@@ -329,6 +331,7 @@ static void stateSuccessEnter()
     currentLevelSeqIdx++;
     if (currentLevelSeqIdx > currentLevel->keyCount) {
         settings.level = (settings.level + 1) % LEVEL_COUNT;
+        gameSettingsWrite(&settings);
         if (GAME_SEQUENCE_STATIC == settings.sequence) {
             currentLevel = levelsGetStaticLevel(settings.level);
         } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
@@ -336,9 +339,6 @@ static void stateSuccessEnter()
             currentLevel = levelsGetRandomLevel(settings.level);
         }
         currentLevelSeqIdx = 1;
-        gameSettingsRead(&settings);
-        settings.level = settings.level;
-        gameSettingsWrite(&settings);
     }
     levelIdx = 0;
 
