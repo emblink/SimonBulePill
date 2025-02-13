@@ -24,8 +24,8 @@
 #define USER_INPUT_TIMEOUT_MS (10 * SECOND)
 #define LEVEL_REPEAT_LIMIT 3
 #define POWER_OFF_TIMEOUT_MS (1 * MINUTE)
-#define SUCCESS_STATE_TIMEOUT_MS (750)
-#define FAILURE_STATE_TIMEOUT_MS (750)
+#define SUCCESS_STATE_TIMEOUT_MS (SECOND)
+#define FAILURE_STATE_TIMEOUT_MS (SECOND)
 #define MENU_TIMEOUT_MS (1 * MINUTE)
 
 typedef union {
@@ -142,6 +142,20 @@ static void onKeyPressCallback(Key key, bool isPressed)
     }
 }
 
+static void playSuccessIndicaton()
+{
+    #define SUCCESS_BLINK_COUNT 4
+    effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 600, 600 / SUCCESS_BLINK_COUNT);
+    notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
+}
+
+static void playFailedIndication()
+{
+    #define FAIL_BLINK_COUNT 4
+    effectManagerPlayEffect(EFFECT_BLINK, LED_RED, 600, 600 / FAIL_BLINK_COUNT);
+    notePlayerPlayMelody(getMelody(MelodyFail), getMelodyLength(MelodyFail));
+}
+
 static void stateInitEnter()
 {
     batteryCheck();
@@ -168,8 +182,7 @@ static void stateInitProcess()
     }
 
     if (input.green || input.red || input.blue || input.yellow) {
-        effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 300, 300 / 4);
-        notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
+        playSuccessIndicaton();
         gameStateProcessEvent(EVENT_INPUT_RECEIVED);
         levelRepeatCount = 0;
     }
@@ -195,8 +208,7 @@ static void stateIdleExit()
 static void stateIdleProcess()
 {
     if (input.green || input.red || input.blue || input.yellow) {
-        effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 300, 300 / 4);
-        notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
+        playSuccessIndicaton();
         gameStateProcessEvent(EVENT_INPUT_RECEIVED);
         levelRepeatCount = 0;
     }
@@ -326,8 +338,7 @@ static void stateUserInputProcess()
 static void stateSuccessEnter()
 {
     effectManagerStopAllEffects();
-    effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 500, 500 / 4);
-    notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
+    playSuccessIndicaton();
     currentLevelSeqIdx++;
     if (currentLevelSeqIdx > currentLevel->keyCount) {
         settings.level = (settings.level + 1) % LEVEL_COUNT;
@@ -353,8 +364,7 @@ static void stateSuccessExit()
 static void stateFailEnter()
 {
     effectManagerStopAllEffects();
-    effectManagerPlayEffect(EFFECT_BLINK, LED_RED, 500, 500 / 4);
-    notePlayerPlayMelody(getMelody(MelodyFail), getMelodyLength(MelodyFail));
+    playFailedIndication();
     animationSystemPlay(ANIM_SAD, true);
 }
 
