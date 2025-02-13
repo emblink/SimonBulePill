@@ -394,6 +394,7 @@ static void stateMenuEnter()
 static void stateMenuExit()
 {
     gameSettingsRead(&settings);
+    levelRepeatCount = 0;
 }
 
 static void stateMenuProcess()
