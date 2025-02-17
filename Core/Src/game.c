@@ -402,7 +402,13 @@ static void stateMenuEnter()
 
 static void stateMenuExit()
 {
+    GameSettings prevSettings = settings;
     gameSettingsRead(&settings);
+    if (prevSettings.level != settings.level) {
+        currentLevel = NULL;
+        currentLevelSeqIdx = 1;
+        levelIdx = 0;
+    }
     levelRepeatCount = 0;
 }
 
@@ -421,9 +427,9 @@ static void stateMenuProcess()
     gameStateResetTimeout();
 
     if (userInput.blue) {
-        gameMenuProcessAction(MENU_ACTION_UP);
-    } else if (userInput.yellow) {
         gameMenuProcessAction(MENU_ACTION_DOWN);
+    } else if (userInput.yellow) {
+        gameMenuProcessAction(MENU_ACTION_UP);
     } else if (userInput.green) {
         gameMenuProcessAction(MENU_ACTION_SELECT);
     } else if (userInput.menu) {

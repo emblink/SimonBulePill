@@ -12,11 +12,10 @@
 typedef enum {
     MENU_ITEM_LEVEL = 0,
     MENU_ITEM_SPEED,
-    MENU_ITEM_MODE,
     MENU_ITEM_SEQUENCE,
-    MENU_ITEM_RESET,
+    MENU_ITEM_MODE,
     MENU_ITEM_SAVE_AND_EXIT,
-    MENU_ITEM_EXIT,
+    MENU_ITEM_RESET,
     MENU_ITEM_COUNT
 } MenuItem;
 
@@ -27,7 +26,6 @@ static const char * menuItems[] = {
     [MENU_ITEM_SEQUENCE] = "Sequence",
     [MENU_ITEM_RESET] = "Reset to defaults",
     [MENU_ITEM_SAVE_AND_EXIT] = "Save and exit",
-    [MENU_ITEM_EXIT] = "Exit",
 };
 
 static const char * speedToStr[] = {
@@ -84,7 +82,7 @@ static uint8_t * itemToSettingValue[] = {
 
 static const char * settingsGetString(MenuItem item)
 {
-    if (item > MENU_ITEM_SEQUENCE) {
+    if (item >= MENU_ITEM_SAVE_AND_EXIT) {
         return NULL;
     }
 
@@ -157,9 +155,6 @@ static void processSelectAction()
             break;
         case MENU_ITEM_SAVE_AND_EXIT:
             gameSettingsWrite(&settings);
-            gameStateProcessEvent(EVENT_MENU_EXIT);
-            break;
-        case MENU_ITEM_EXIT:
             gameStateProcessEvent(EVENT_MENU_EXIT);
             break;
     }
