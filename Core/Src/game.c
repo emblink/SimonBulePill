@@ -40,10 +40,9 @@ typedef union {
 } Keys;
 
 // Nessesary
-// TODO: Fix sound hiccup after Fail -> Showing state transition
-
 
 // Optional
+// TODO: Add cat cool animation on level completed
 // TODO: Add a game mode single player, player vs player
 // TODO: Refactor, put all global variables to a struct
 // TODO: Add transition to Idle state sound
