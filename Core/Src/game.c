@@ -223,8 +223,8 @@ static void oledShowSequence(const char stateStr[])
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize12);
-    OLED_Printf("Lvl:%i%i/%i%i\n", (settings.level + 1) / 10, (settings.level + 1) % 10,
-                LEVEL_COUNT / 10, LEVEL_COUNT % 10);
+    OLED_Printf("Level:%i\n", settings.level + 1);
+    OLED_SetTextSize(FontSize16);
     OLED_Printf("%s:%i%i/%i%i", stateStr, levelIdx / 10, levelIdx % 10,
                 currentLevelSeqIdx / 10, currentLevelSeqIdx % 10);
     showBatteryCharge();
@@ -251,7 +251,7 @@ static void stateShowLevelEnter()
             currentLevel = levelsGetRandomLevel(settings.level);
         }
     }
-    oledShowSequence("Showing");
+    oledShowSequence("Show");
 }
 
 static void stateShowLevelExit()
@@ -282,7 +282,7 @@ static void stateShowLevelProcess()
     } else {
         // Show the level sequence
         Key key = currentLevel->sequence[levelIdx++];
-        oledShowSequence("Showing");
+        oledShowSequence("Show");
         Note n = keyNoteMap[key];
         uint32_t duration = gameSpeedToDuration[settings.speed];
         notePlayerPlayNote(n.note, duration);
