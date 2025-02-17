@@ -13,17 +13,17 @@ static uint32_t transitionStartMs = 0;
 static uint32_t transitionTimeoutMs = 0;
 static uint32_t stateEnterMs = 0;
 
-static void changeState(const StateTransition *transition)
+static void changeState(const StateTransition *transition, uint32_t delayMs)
 {
     if (stateDefs[currentState].onExit) {
         stateDefs[currentState].onExit();
     }
 
-    if (transition->delayMs) {
+    if (delayMs) {
         nextState = transition->nextState;
         currentState = GAME_STATE_TRANSITION;
         transitionStartMs = HAL_GetTick();
-        transitionTimeoutMs = transition->delayMs;
+        transitionTimeoutMs = delayMs;
     } else {
         currentState = transition->nextState;
         if (stateDefs[currentState].onEnter) {
@@ -56,7 +56,16 @@ void gameStateProcessEvent(Event event)
     // Process current state event
     const StateTransition *transition = gameStateGetTransition(currentState, event);
     if (transition) {
-        changeState(transition);
+        changeState(transition, transition->delayMs);
+    }
+}
+
+void gameStateProcessEventWithDelay(Event event, uint32_t delayMs)
+{
+    // Process current state event
+    const StateTransition *transition = gameStateGetTransition(currentState, event);
+    if (transition) {
+        changeState(transition, delayMs);
     }
 }
 

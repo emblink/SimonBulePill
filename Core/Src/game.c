@@ -326,7 +326,7 @@ static void stateUserInputProcess()
         notePlayerPlayNote(n.note, duration);
         effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[levelKey], duration, duration);
         if (levelIdx >= currentLevelSeqIdx) {
-            gameStateProcessEvent(EVENT_INPUT_CORRECT);
+            gameStateProcessEventWithDelay(EVENT_INPUT_CORRECT, duration);
         }
     } else {
         // wrong key was pressed
