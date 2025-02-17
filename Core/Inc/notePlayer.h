@@ -3,9 +3,10 @@
 #include <stdbool.h>
 #include "notes.h"
 
-typedef void (* PlaybackCompletedCb)(void);
+typedef void (* PlaybackCb)(void);
 
-void notePlayerInit(PlaybackCompletedCb callback);
+void notePlayerInit(PlaybackCb start, PlaybackCb finish);
 void notePlayerPlayNote(uint32_t note, uint32_t durationMs);
 void notePlayerPlayMelody(const Note melody[], uint32_t length);
 bool notePlayerIsPlaying();
+void notePlayerStop();

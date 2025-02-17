@@ -95,6 +95,7 @@ HAL_StatusTypeDef OLED_Init(SPI_HandleTypeDef * hspi);
 void OLED_DrawPixel(uint8_t x, uint8_t y, OLED_Color_t color);
 HAL_StatusTypeDef OLED_UpdateScreen(void);
 void OLED_FillScreen(OLED_Color_t Color);
+void OLED_DrawImage(const uint8_t *img);
 
 #if defined(OLED_COLORZONE)
 void OLED_ToggleInvert(OLED_Zone_t zone);

@@ -1,17 +1,21 @@
 #include "notePlayer.h"
-#include "main.h"
 #include "tim.h"
+#include "generic.h"
 
-#define ELEMENTS(arr) (sizeof(arr) / sizeof((arr)[0]))
-static PlaybackCompletedCb finishedCb = NULL;
+static PlaybackCb startedCb = NULL;
+static PlaybackCb finishedCb = NULL;
 
 // 1 ms resolution timer
 #define NOTE_TIMER TIM1
 #define NOTE_TIMER_HANDLE htim1
+#define NOTE_TIMER_CHANNEL TIM_CHANNEL_1
+#define NOTE_TIMER_CCR (NOTE_TIMER->CCR1)
 
 // 48Mhz clock, CCR1 = 1024 - 1 counter, updates by DMA from DMA_TIMER
 #define PWM_TIMER TIM2
 #define PWM_TIMER_HANDLE htim2
+#define PWM_TIMER_CHANNEL TIM_CHANNEL_2
+#define PWM_TIMER_CCR (PWM_TIMER->CCR2)
 
 #define DMA_TIMER_CLOCK 72000000
 #define DMA_TIMER TIM4
@@ -34,7 +38,7 @@ const uint16_t sineLookupTable[] = {
 	512, 486, 461, 436, 412, 387, 363, 339,
 	316, 293, 270, 249, 227, 207, 187, 168,
 	150, 133, 116, 101, 86, 73, 60, 49,
-	39, 30, 22, 15, 10, 6, 2, 1
+	39, 30, 22, 15, 10, 6, 2, 1,
 };
 
 static const uint16_t fadeOutTable[] = {
@@ -45,42 +49,34 @@ static const uint16_t fadeOutTable[] = {
 	512, 486, 461, 436, 412, 387, 363, 339,
 	316, 293, 270, 249, 227, 207, 187, 168,
 	150, 133, 116, 101, 86, 73, 60, 49,
-	39, 30, 22, 15, 10, 6, 2, 1
+	39, 30, 22, 15, 10, 6, 2, 1, 0
 };
 
-void notePlayerInit(PlaybackCompletedCb callback)
+void notePlayerInit(PlaybackCb onStartCb, PlaybackCb onFinishCb)
 {
-	finishedCb = callback;
-}
-
-static inline void ledOn()
-{
-	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
-}
-
-static inline void ledOff()
-{
-	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 1);
+    startedCb = onStartCb;
+    finishedCb = onFinishCb;
 }
 
 static void XferCpltCallback(DMA_HandleTypeDef *hdma)
 {
-	HAL_TIM_PWM_Stop(&PWM_TIMER_HANDLE, TIM_CHANNEL_1);
-	DMA_TIMER_CHANNEL_HANDLE.Instance->CCR |= DMA_CCR_CIRC_Msk; // enable circular mode
-	DMA_TIMER_CHANNEL_HANDLE.Instance->CCR &= ~DMA_CCR_TCIE_Msk; // disable interrupts
-	ledOff();
-	finishedCb();
+    HAL_TIM_PWM_Stop(&PWM_TIMER_HANDLE, PWM_TIMER_CHANNEL);
+    DMA_TIMER_CHANNEL_HANDLE.Instance->CCR |= DMA_CCR_CIRC_Msk; // enable circular mode
+    DMA_TIMER_CHANNEL_HANDLE.Instance->CCR &= ~DMA_CCR_TCIE_Msk; // disable interrupts
+    if (finishedCb) {
+        finishedCb();
+    }
 }
 
 static Note *melody = NULL;
 static uint32_t melodyLen = 0;
 static uint32_t melodyNoteIdx = 0;
-static uint32_t DestAddress = (uint32_t) &(PWM_TIMER->CCR1);
+static uint32_t DestAddress = (uint32_t) &(PWM_TIMER_CCR);
 
 static void stopPWM()
 {
 	HAL_DMA_Abort(&DMA_TIMER_CHANNEL_HANDLE);
-	uint16_t pwm = PWM_TIMER->CCR1;
+	uint16_t pwm = PWM_TIMER_CCR;
 	if (0 == pwm)
 	{
 		XferCpltCallback(NULL);
@@ -99,7 +95,7 @@ static void stopPWM()
 		DMA_TIMER_CHANNEL_HANDLE.XferCpltCallback= &XferCpltCallback;
 		DMA_TIMER->CNT = 0;
 		HAL_DMA_Start_IT(&DMA_TIMER_CHANNEL_HANDLE, (uint32_t)&fadeOutTable[i], DestAddress, ELEMENTS(fadeOutTable) - i);
-		HAL_TIM_PWM_Start(&PWM_TIMER_HANDLE, TIM_CHANNEL_1);
+		HAL_TIM_PWM_Start(&PWM_TIMER_HANDLE, PWM_TIMER_CHANNEL);
 	}
 }
 
@@ -111,14 +107,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     			// Stop timer
     			melody = NULL;
     			melodyLen = 0;
-    			HAL_TIM_OC_Stop_IT(&NOTE_TIMER_HANDLE, TIM_CHANNEL_1);
+    			HAL_TIM_OC_Stop_IT(&NOTE_TIMER_HANDLE, NOTE_TIMER_CHANNEL);
     			stopPWM();
     		} else {
     			notePlayerPlayNote(melody[melodyNoteIdx].note, melody[melodyNoteIdx].duration);
-    			ledOn();
     		}
     	} else {
-    		HAL_TIM_OC_Stop_IT(&NOTE_TIMER_HANDLE, TIM_CHANNEL_1);
+    		HAL_TIM_OC_Stop_IT(&NOTE_TIMER_HANDLE, NOTE_TIMER_CHANNEL);
     		stopPWM();
     	}
     }
@@ -132,6 +127,10 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim) {
 
 void notePlayerPlayNote(uint32_t noteHz, uint32_t durationMs)
 {
+    if (startedCb) {
+        startedCb();
+    }
+
 	// Stop and clear all timers
 	DMA_TIMER->CR1 &= ~TIM_CR1_CEN_Msk;
 	PWM_TIMER->CR1 &= ~TIM_CR1_CEN_Msk;
@@ -141,10 +140,10 @@ void notePlayerPlayNote(uint32_t noteHz, uint32_t durationMs)
 
 	// Start note duration timer
 	NOTE_TIMER->SR &= ~TIM_SR_UIF_Msk; // prevent instant update interrupt after the initial timer config
-	NOTE_TIMER->CCR1 = durationMs;
+	NOTE_TIMER_CCR = durationMs;
 	NOTE_TIMER->ARR = durationMs * 2;
 	HAL_TIM_Base_Start_IT(&NOTE_TIMER_HANDLE);
-	HAL_TIM_OC_Start_IT(&NOTE_TIMER_HANDLE, TIM_CHANNEL_1);
+	HAL_TIM_OC_Start_IT(&NOTE_TIMER_HANDLE, NOTE_TIMER_CHANNEL);
 
 	// Start PWM timer
 	if (0 == noteHz) {
@@ -159,7 +158,7 @@ void notePlayerPlayNote(uint32_t noteHz, uint32_t durationMs)
 	DMA_TIMER_CHANNEL_HANDLE.Instance->CCR |= DMA_CCR_CIRC_Msk; // enable circular mode
 	DMA_TIMER_CHANNEL_HANDLE.Instance->CCR &= ~DMA_CCR_TCIE_Msk; // disable interrupts
 	HAL_DMA_Start(&DMA_TIMER_CHANNEL_HANDLE, (uint32_t) sineLookupTable, DestAddress, ELEMENTS(sineLookupTable));
-	HAL_TIM_PWM_Start(&PWM_TIMER_HANDLE, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&PWM_TIMER_HANDLE, PWM_TIMER_CHANNEL);
 	DMA_TIMER->CR1 |= TIM_CR1_CEN_Msk;
 	PWM_TIMER->CR1 |= TIM_CR1_CEN_Msk;
 }
@@ -170,11 +169,18 @@ void notePlayerPlayMelody(const Note mel[], uint32_t length)
 	melodyLen = length;
 	melodyNoteIdx = 0;
 	notePlayerPlayNote(melody[melodyNoteIdx].note, melody[melodyNoteIdx].duration);
-	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
 }
 
 bool notePlayerIsPlaying()
 {
-//	return melody != NULL;
 	return PWM_TIMER->CR1 & TIM_CR1_CEN_Msk;
+}
+
+void notePlayerStop()
+{
+	melody = NULL;
+	melodyLen = 0;
+	melodyNoteIdx = 0;
+	HAL_TIM_OC_Stop_IT(&NOTE_TIMER_HANDLE, NOTE_TIMER_CHANNEL);
+	stopPWM();
 }

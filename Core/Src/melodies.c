@@ -1,6 +1,5 @@
 #include "melodies.h"
-
-#define ELEMENTS(arr) (sizeof(arr) / sizeof((arr)[0]))
+#include "generic.h"
 
 #undef NOTE_DUR
 #define NOTE_DUR 1000

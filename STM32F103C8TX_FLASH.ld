@@ -45,7 +45,8 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 20K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 64K
+  FLASH  (rx)     : ORIGIN = 0x8000000,   LENGTH = 63K /* Reserve 1 KB for settings */
+  FLASH_SETTINGS (rw) : ORIGIN = 0x0800FC00, LENGTH = 1K /* Last page of Flash */
 }
 
 /* Sections */
@@ -58,6 +59,14 @@ SECTIONS
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
   } >FLASH
+
+  /* Place the .settings section at the last page */
+  .settings :
+  {
+    . = ALIGN(4);
+    KEEP(*(.settings))
+    . = ALIGN(4);
+  } > FLASH_SETTINGS
 
   /* The program code and other data into "FLASH" Rom type memory */
   .text :

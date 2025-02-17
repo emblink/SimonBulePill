@@ -12,8 +12,8 @@ typedef enum {
 	KEY_GREEN,
 	KEY_BLUE,
 	KEY_YELLOW,
+    KEY_MENU,
 	KEY_COUNT,
-//	KEY_SELECT,
 } Key;
 
 extern const KeyPin keyTable[KEY_COUNT];
