@@ -111,16 +111,16 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-  while (1)
+  while (gameIsRunning())
   {
-	  gameProcess();
-	// Enter low-power mode, waiting for the next interrupt
-	  sleepManagerProcess();
+      gameProcess();
+      // Enter low-power mode, waiting for the next interrupt
+      sleepManagerProcess();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
+  sleepManagerEnterStandbyMode();
   /* USER CODE END 3 */
 }
 

@@ -1,14 +1,15 @@
-#include "gameMenu.h"
+#include "gameSceneMenu.h"
 #include "fontSize.h"
 #include "oled.h"
 #include "gameSettings.h"
 #include "levels.h"
-#include "gameStateDefines.h"
 #include "gameState.h"
 #include "generic.h"
+#include "game.h"
 
 #define MENU_UPDATE_INTERVAL_MS 100
 #define MENU_HIGHLIGHT_INTERVAL_MS 250
+
 typedef enum {
     MENU_ITEM_LEVEL = 0,
     MENU_ITEM_SPEED,
@@ -18,6 +19,15 @@ typedef enum {
     MENU_ITEM_RESET,
     MENU_ITEM_COUNT
 } MenuItem;
+
+typedef enum {
+    MENU_ACTION_NONE,
+    MENU_ACTION_UP,
+    MENU_ACTION_DOWN,
+    MENU_ACTION_SELECT,
+    MENU_ACTION_MENU,
+    MENU_ACTION_COUNT
+} MenuAction;
 
 static const char * menuItems[] = {
     [MENU_ITEM_LEVEL] = "Level",
@@ -37,6 +47,7 @@ static const char * speedToStr[] = {
 static const char * modeToStr[] = {
     [GAME_MODE_SINGLE] = "Single",
     [GAME_MODE_PVP] = "1v1",
+    [GAME_MODE_MUSIC] = "Music",
 };
 
 static const char * sequenceToStr[] = {
@@ -94,20 +105,6 @@ static const char * settingsGetString(MenuItem item)
     return settingValueToStr[item][val];
 }
 
-void gameMenuInit(void)
-{
-    gameSettingsRead(&settings);
-    currentItem = MENU_ITEM_LEVEL;
-    isItemSelected = false;
-    isHighlighted = false;
-    lastUpdateMs = HAL_GetTick();
-    OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize16);
-    OLED_Printf(" MENU");
-    OLED_UpdateScreen();
-}
-
 static void updateMenu()
 {
     OLED_FillScreen(Black);
@@ -128,7 +125,7 @@ static void updateMenu()
 }
 
 static void processSettingChange(MenuAction action) {
-    if (currentItem >= MENU_ITEM_LEVEL && currentItem <= MENU_ITEM_SEQUENCE) {
+    if (currentItem >= MENU_ITEM_LEVEL && currentItem <= MENU_ITEM_MODE) {
         uint8_t *setting = itemToSettingValue[currentItem];
         uint8_t maxVal = settingMaxValue[currentItem];
         if (action == MENU_ACTION_UP) {
@@ -155,7 +152,7 @@ static void processSelectAction()
             break;
         case MENU_ITEM_SAVE_AND_EXIT:
             gameSettingsWrite(&settings);
-            gameStateProcessEvent(EVENT_MENU_EXIT);
+            gameOnSceneEnd();
             break;
     }
 }
@@ -174,10 +171,10 @@ static void processMenuItemChange(MenuAction action)
     }
 }
 
-void gameMenuProcessAction(MenuAction action)
+static void processAction(MenuAction action)
 {
     if (MENU_ACTION_MENU == action) {
-        gameStateProcessEvent(EVENT_MENU_EXIT);
+        gameOnSceneEnd();
         return;
     }
 
@@ -194,7 +191,37 @@ void gameMenuProcessAction(MenuAction action)
     updateMenu();
 }
 
-void gameMenuProcess(void)
+static void onKeyPressed(Key key, bool pressed)
+{
+    if (!pressed) {
+        return;
+    }
+
+    switch (key) {
+    case KEY_GREEN: processAction(MENU_ACTION_SELECT); break;
+    case KEY_BLUE: processAction(MENU_ACTION_DOWN); break;
+    case KEY_YELLOW: processAction(MENU_ACTION_UP); break;
+    case KEY_MENU: processAction(MENU_ACTION_MENU); break;
+    default: break;
+    };
+}
+
+void gameSceneMenuEnter(void)
+{
+    gameSettingsRead(&settings);
+    currentItem = MENU_ITEM_LEVEL;
+    isItemSelected = false;
+    isHighlighted = false;
+    lastUpdateMs = HAL_GetTick();
+    gameSetSceneInputCb(onKeyPressed);
+    OLED_FillScreen(Black);
+    OLED_SetCursor(0, 0);
+    OLED_SetTextSize(FontSize16);
+    OLED_Printf(" MENU");
+    OLED_UpdateScreen();
+}
+
+void gameSceneMenuProcess(void)
 {
     bool update = false;
     if (isItemSelected && isTimeoutHappened(lastHighlightMs, MENU_HIGHLIGHT_INTERVAL_MS)) {
@@ -209,3 +236,5 @@ void gameMenuProcess(void)
         updateMenu();
     }
 }
+
+

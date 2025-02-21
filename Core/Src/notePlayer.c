@@ -2,7 +2,7 @@
 #include "tim.h"
 #include "generic.h"
 
-static PlaybackCb startedCb = NULL;
+static NoteStartCb startedCb = NULL;
 static PlaybackCb finishedCb = NULL;
 
 // 1 ms resolution timer
@@ -52,7 +52,7 @@ static const uint16_t fadeOutTable[] = {
 	39, 30, 22, 15, 10, 6, 2, 1, 0
 };
 
-void notePlayerInit(PlaybackCb onStartCb, PlaybackCb onFinishCb)
+void notePlayerInit(NoteStartCb onStartCb, PlaybackCb onFinishCb)
 {
     startedCb = onStartCb;
     finishedCb = onFinishCb;
@@ -128,7 +128,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim) {
 void notePlayerPlayNote(uint32_t noteHz, uint32_t durationMs)
 {
     if (startedCb) {
-        startedCb();
+        startedCb(noteHz, durationMs);
     }
 
 	// Stop and clear all timers

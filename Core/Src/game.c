@@ -1,464 +1,246 @@
-#include "stdint.h"
-#include "game.h"
-#include "notePlayer.h"
-#include "effectManager.h"
-#include "melodies.h"
-#include "keyscan.h"
-#include "levels.h"
-#include "tim.h"
-#include "i2c.h"
-#include "oled.h"
-#include "gameState.h"
-#include "gameSettings.h"
-#include "fontSize.h"
-#include "gameMenu.h"
-#include "audioAmplifier.h"
-#include "batteryManager.h"
-#include "animationSystem.h"
+#include "gameIncludes.h"
 
-// Time constants
-#define SECOND 1000
-#define MINUTE (60 * SECOND)
+#define BATTERY_CHECK_PERIOD (MINUTE * 5)
 
-// Timeouts and intervals
-#define USER_INPUT_TIMEOUT_MS (10 * SECOND)
-#define LEVEL_REPEAT_LIMIT 3
-#define POWER_OFF_TIMEOUT_MS (1 * MINUTE)
-#define SUCCESS_STATE_TIMEOUT_MS (SECOND)
-#define FAILURE_STATE_TIMEOUT_MS (SECOND)
-#define MENU_TIMEOUT_MS (1 * MINUTE)
+typedef struct {
+    bool isRunning;
+    GameScene currentScene;
+    GameSettings settings;
+    int32_t batteryCharge;
+    uint32_t lastBatteryCheckMs;
+    volatile Keys input;
+    SceneInputCb sceneInputCb;
+} GameHandle;
 
-typedef union {
-    struct {
-        uint8_t red : 1;
-        uint8_t green : 1;
-        uint8_t blue : 1;
-        uint8_t yellow : 1;
-        uint8_t menu : 1;
-    };
-    uint32_t state;
-} Keys;
-
+static GameHandle game = {0};
 // Nessesary
 
 // Optional
 // TODO: Add cat cool animation on level completed
 // TODO: Add a game mode single player, player vs player
-// TODO: Refactor, put all global variables to a struct
-// TODO: Add transition to Idle state sound
 // TODO: Add power off animation
-
-static const Level * currentLevel = NULL;
-static uint32_t currentLevelSeqIdx = 1;
-static uint32_t levelIdx = 0;
-static volatile Keys input = {0};
-static uint32_t levelRepeatCount = 0;
-static GameSettings settings = {0};
-static uint32_t batteryCharge = 0;
-static uint32_t lastBatteryCheckMs = 0;
-
-static const Note keyNoteMap[] = {
-    [KEY_RED] = { NOTE_C4, 0 },
-    [KEY_GREEN] = { NOTE_E4, 0 },
-    [KEY_BLUE] = { NOTE_G4, 0 },
-    [KEY_YELLOW] = { NOTE_C5, 0 },
-};
-
-static const Led keyLedMap[] = {
-    [KEY_RED] = LED_RED,
-    [KEY_GREEN] = LED_GREEN,
-    [KEY_BLUE] = LED_BLUE,
-    [KEY_YELLOW] = LED_YELLOW,
-};
-
-static const uint32_t gameSpeedToDuration[] = {
-    [GAME_SPEED_SLOW] = 800,
-    [GAME_SPEED_MEDIUM] = 500,
-    [GAME_SPEED_HIGH] = 250,
-};
-
-static void batteryCheck()
-{
-    batteryCharge = batteryManagerGetPercent();
-}
-
-static void batteryProcess()
-{
-    uint32_t currentTick = HAL_GetTick();
-    if (currentTick - lastBatteryCheckMs > 5 * MINUTE) {
-        lastBatteryCheckMs = currentTick;
-        batteryCheck();
-    }
-
-    if (0 == batteryCharge) {
-        gameStateProcessEvent(EVENT_BATTERY_LOW);
-    }
-}
 
 static void showBatteryCharge()
 {
     OLED_SetCursor(105, 0);
     OLED_SetTextSize(FontSize12);
-    OLED_Printf("%i", batteryCharge);
+    OLED_Printf("%i", game.batteryCharge);
 }
 
-static inline void ledOn()
+static void onPlaybackStarted(uint32_t noteHz, uint32_t duration)
 {
-//	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 0);
-}
-
-static inline void ledOff()
-{
-//	HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, 1);
-}
-
-static void onPlaybackFinished()
-{
-	// audioAmplifierMute(true); // makes bumping sound in the end even if the sound sine fades properly
-	ledOff();
-}
-
-static void onPlaybackStarted()
-{
-	audioAmplifierMute(false);
-	ledOn();
-}
-
-static void onEffectFinished(Led led)
-{
-
+    (void) noteHz;
+    (void) duration;
+    audioAmplifierMute(false);
 }
 
 static void onKeyPressCallback(Key key, bool isPressed)
 {
     switch (key) {
-    case KEY_RED: input.red = isPressed; break;
-    case KEY_GREEN: input.green = isPressed; break;
-    case KEY_BLUE: input.blue = isPressed; break;
-    case KEY_YELLOW: input.yellow = isPressed; break;
-    case KEY_MENU: input.menu = isPressed; break;
+    case KEY_RED: game.input.red = isPressed; break;
+    case KEY_GREEN: game.input.green = isPressed; break;
+    case KEY_BLUE: game.input.blue = isPressed; break;
+    case KEY_YELLOW: game.input.yellow = isPressed; break;
+    case KEY_MENU: game.input.menu = isPressed; break;
     default: break;
     }
 }
 
-static void playSuccessIndicaton()
+static void changeScene(GameScene newScene)
 {
-    #define SUCCESS_BLINK_COUNT 4
-    effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 600, 600 / SUCCESS_BLINK_COUNT);
-    notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
-}
-
-static void playFailedIndication()
-{
-    #define FAIL_BLINK_COUNT 4
-    effectManagerPlayEffect(EFFECT_BLINK, LED_RED, 600, 600 / FAIL_BLINK_COUNT);
-    notePlayerPlayMelody(getMelody(MelodyFail), getMelodyLength(MelodyFail));
-}
-
-static void stateInitEnter()
-{
-    batteryCheck();
-    audioAmplifierInit();
-    OLED_Init(&hi2c1);
-    OLED_FillScreen(Black);
-    OLED_UpdateScreen();
-    if (!gameSettingsRead(&settings)) {
-        gameSettingsReset();
-        gameSettingsRead(&settings);
-    }
-    keyscanInit(&onKeyPressCallback);
-    notePlayerInit(&onPlaybackStarted, &onPlaybackFinished);
-    effectManagerInit(&onEffectFinished);
-    notePlayerPlayMelody(getMelody(MelodyPowerOn), getMelodyLength(MelodyPowerOn));
-    effectManagerPlayPowerOn();
-    animationSystemPlay(ANIM_HELLO, true);
-}
-
-static void stateInitProcess()
-{
-    if (effectManagerIsPlaying()) {
-        return;
-    }
-
-    if (input.green || input.red || input.blue || input.yellow) {
-        playSuccessIndicaton();
-        gameStateProcessEvent(EVENT_INPUT_RECEIVED);
-        levelRepeatCount = 0;
-    }
-}
-
-static void stateInitExit()
-{
+    effectManagerStopAllEffects();
     animationSystemStop();
-}
+    notePlayerStop();
+    notePlayerInit(onPlaybackStarted, NULL);
 
-static void stateIdleEnter()
-{
-    effectManagerStopAllEffects();
-    animationSystemPlay(ANIM_SLEEP, true);
-    input.state = 0; // reset input state
-}
-
-static void stateIdleExit()
-{
-	animationSystemStop();
-}
-
-static void stateIdleProcess()
-{
-    if (input.green || input.red || input.blue || input.yellow) {
-        playSuccessIndicaton();
-        gameStateProcessEvent(EVENT_INPUT_RECEIVED);
-        levelRepeatCount = 0;
+    switch (newScene) {
+    case GAME_SCENE_POWER_ON: gameScenePowerOnEnter(); break;
+    case GAME_SCENE_SIMON: gameSceneSimonEnter(); break;
+    case GAME_SCENE_MUSIC: gameSceneMusicEnter(); break;
+    case GAME_SCENE_MENU: gameSceneMenuEnter(); break;
+    case GAME_SCENE_IDLE: gameSceneIdleEnter(); break;
+    case GAME_SCENE_POWER_OFF: gameScenePowerOffEnter(); break;
+    default: break;
     }
+    game.currentScene = newScene;
+}
 
-    if (input.menu) {
-        gameStateProcessEvent(EVENT_INPUT_MENU);
-        return;
+static void sceneProcess()
+{
+    switch (game.currentScene) {
+    case GAME_SCENE_POWER_ON: gameScenePowerOnProcess(); break;
+    case GAME_SCENE_SIMON: gameSceneSimonProcess(); break;
+    case GAME_SCENE_MUSIC: gameSceneMusicProcess(); break;
+    case GAME_SCENE_MENU: gameSceneMenuProcess(); break;
+    case GAME_SCENE_IDLE: gameSceneIdleProcess(); break;
+    case GAME_SCENE_POWER_OFF: gameScenePowerOffProcess(); break;
+    default: break;
     }
 }
 
-static void oledShowSequence(const char stateStr[])
+static void onMenuKeyPress()
 {
-    OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize12);
-    OLED_Printf("Level:%i\n", settings.level + 1);
-    OLED_SetTextSize(FontSize16);
-    OLED_Printf("%s:%i%i/%i%i", stateStr, levelIdx / 10, levelIdx % 10,
-                currentLevelSeqIdx / 10, currentLevelSeqIdx % 10);
-    showBatteryCharge();
-    OLED_UpdateScreen();
-}
+    switch (game.currentScene) {
+    case GAME_SCENE_SIMON:
+    case GAME_SCENE_MUSIC:
+        changeScene(GAME_SCENE_MENU);
+        break;
 
-static void stateShowLevelEnter()
-{
-    effectManagerStopAllEffects();
-    levelIdx = 0;
-
-    levelRepeatCount++;
-    if (levelRepeatCount > LEVEL_REPEAT_LIMIT) {
-        levelRepeatCount = 0;
-        gameStateProcessEvent(EVENT_LEVEL_REPEATED_TOO_MANY_TIMES);
-        return;
-    }
-
-    if (GAME_SEQUENCE_STATIC == settings.sequence) {
-        currentLevel = levelsGetStaticLevel(settings.level);
-    } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
-        if (NULL == currentLevel) {
-            levelsGenerateRandomLevel(settings.level);
-            currentLevel = levelsGetRandomLevel(settings.level);
+    case GAME_SCENE_MENU:
+        gameSettingsRead(&game.settings);
+        if (GAME_MODE_MUSIC == game.settings.mode) {
+            changeScene(GAME_SCENE_MUSIC);
+        } else {
+            changeScene(GAME_SCENE_SIMON);
         }
-    }
-    oledShowSequence("Show");
-}
+        break;
 
-static void stateShowLevelExit()
-{
-    effectManagerStopAllEffects();
-    levelIdx = 0;
-}
-
-static void stateShowLevelProcess()
-{
-    if (input.menu) {
-        gameStateProcessEvent(EVENT_INPUT_MENU);
-        return;
-    }
-
-    if (input.state) {
-        levelRepeatCount = 0;
-        gameStateProcessEvent(EVENT_SEQUENCE_CANCELED);
-        return;
-    }
-
-    if (effectManagerIsPlaying()) {
-        return;
-    }
-
-    if (levelIdx >= currentLevelSeqIdx) {
-        gameStateProcessEvent(EVENT_SEQUENCE_SHOWN);
-    } else {
-        // Show the level sequence
-        Key key = currentLevel->sequence[levelIdx++];
-        oledShowSequence("Show");
-        Note n = keyNoteMap[key];
-        uint32_t duration = gameSpeedToDuration[settings.speed];
-        notePlayerPlayNote(n.note, duration);
-        effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[key], duration, duration);
+    default:
+        break;
     }
 }
 
-static void stateUserInputEnter()
+static void userInputProcess()
 {
-    // Reset input state before the level sequence is shown
-    // User have to press a key to cancel the sequence and confirm readiness
-    input.state = 0;
-    oledShowSequence("Input");
-}
-
-static void stateUserInputProcess()
-{
-    if (input.menu) {
-        gameStateProcessEvent(EVENT_INPUT_MENU);
-        return;
-    }
-
-    if (0 == input.state) {
-        return;
-    }
-
-    levelRepeatCount = 0;
-
     // Critical section to avoid concurrent access to the input variable
     keyscanDisableIrq();
-    Keys userInput = input; // copy state, should be atomic operation
-    input.state &= ~userInput.state; // reset input state bits
+    Keys userInput = game.input; // copy state, should be atomic operation
+    game.input.state &= ~userInput.state; // reset input state bits
     keyscanEnableIrq();
-    const Key levelKey = currentLevel->sequence[levelIdx];
-    if (userInput.state & (1 << levelKey)) {
-        gameStateResetTimeout();
-        levelIdx++;
-        oledShowSequence("Input");
-        Note n = keyNoteMap[levelKey];
-        uint32_t duration = gameSpeedToDuration[settings.speed];
-        notePlayerPlayNote(n.note, duration);
-        effectManagerPlayEffect(EFFECT_FAST_RUMP, keyLedMap[levelKey], duration, duration);
-        if (levelIdx >= currentLevelSeqIdx) {
-            gameStateProcessEventWithDelay(EVENT_INPUT_CORRECT, duration);
+    
+    if (userInput.menu) {
+        switch (game.currentScene) {
+        case GAME_SCENE_SIMON:
+        case GAME_SCENE_MUSIC:
+        case GAME_SCENE_MENU:
+            onMenuKeyPress(); break;
+        default: break;
         }
-    } else {
-        // wrong key was pressed
-        gameStateProcessEvent(EVENT_INPUT_WRONG);
-    }
-}
-
-static void stateSuccessEnter()
-{
-    effectManagerStopAllEffects();
-    playSuccessIndicaton();
-    currentLevelSeqIdx++;
-    if (currentLevelSeqIdx > currentLevel->keyCount) {
-        settings.level = (settings.level + 1) % LEVEL_COUNT;
-        gameSettingsWrite(&settings);
-        if (GAME_SEQUENCE_STATIC == settings.sequence) {
-            currentLevel = levelsGetStaticLevel(settings.level);
-        } else if (GAME_SEQUENCE_RANDOM == settings.sequence) {
-            levelsGenerateRandomLevel(settings.level);
-            currentLevel = levelsGetRandomLevel(settings.level);
+    } else if (game.sceneInputCb) {
+        // report only key press events for now
+        for (int i = 0; i < KEY_COUNT; i++) {
+            if (userInput.state & (1 << i)) {
+                game.sceneInputCb(i, true);
+            }
         }
-        currentLevelSeqIdx = 1;
-    }
-    levelIdx = 0;
-
-    animationSystemPlay(ANIM_HAPPY, true);
-}
-
-static void stateSuccessExit()
-{
-    animationSystemStop();
-}
-
-static void stateFailEnter()
-{
-    effectManagerStopAllEffects();
-    playFailedIndication();
-    animationSystemPlay(ANIM_SAD, true);
-}
-
-static void stateFailExit()
-{
-    animationSystemStop();
-}
-
-static void statePowerOffEnter()
-{
-    OLED_FillScreen(Black);
-    OLED_SetCursor(0, 0);
-    OLED_SetTextSize(FontSize16);
-    OLED_Printf(" SLEEP");
-    OLED_UpdateScreen();
-    HAL_Delay(1000);
-    OLED_DisplayOff();
-    effectManagerPlayPowerOff();
-    // add power off animation and sound
-    // Shut down MCU
-}
-
-static void statePowerOffProcess()
-{
-    // add proper wake up from power off
-    if (input.state) {
-        gameStateProcessEvent(EVENT_INPUT_RECEIVED);
     }
 }
 
-static void stateMenuEnter()
+void batteryProcess(void)
 {
-    input.state = 0;
-    gameMenuInit();
-}
-
-static void stateMenuExit()
-{
-    GameSettings prevSettings = settings;
-    gameSettingsRead(&settings);
-    if (prevSettings.level != settings.level) {
-        currentLevel = NULL;
-        currentLevelSeqIdx = 1;
-        levelIdx = 0;
-    }
-    levelRepeatCount = 0;
-}
-
-static void stateMenuProcess()
-{
-    if (0 == input.state) {
-        gameMenuProcess();
-        return;
-    }
-
-    // Critical section to avoid concurrent access to the input variable
-    keyscanDisableIrq();
-    Keys userInput = input; // copy state, should be atomic operation
-    input.state &= ~userInput.state; // reset input state bits
-    keyscanEnableIrq();
-    gameStateResetTimeout();
-
-    if (userInput.blue) {
-        gameMenuProcessAction(MENU_ACTION_DOWN);
-    } else if (userInput.yellow) {
-        gameMenuProcessAction(MENU_ACTION_UP);
-    } else if (userInput.green) {
-        gameMenuProcessAction(MENU_ACTION_SELECT);
-    } else if (userInput.menu) {
-        gameMenuProcessAction(MENU_ACTION_MENU);
+    uint32_t currentTick = HAL_GetTick();
+    if (currentTick - game.lastBatteryCheckMs > BATTERY_CHECK_PERIOD) {
+        game.lastBatteryCheckMs = currentTick;
+        game.batteryCharge = batteryManagerGetPercent();
+        if (game.batteryCharge <= 0) {
+            changeScene(GAME_SCENE_POWER_OFF);
+        }
     }
 }
 
 void gameInit()
 {
-    // State definition table
-    static const GameStateDef stateDefs[] = {
-        [GAME_STATE_NONE]          = {NULL, NULL, NULL, 0},
-        [GAME_STATE_INIT]          = {stateInitEnter, stateInitExit, stateInitProcess, USER_INPUT_TIMEOUT_MS},
-        [GAME_STATE_IDLE]          = {stateIdleEnter, stateIdleExit, stateIdleProcess, POWER_OFF_TIMEOUT_MS},
-        [GAME_STATE_SHOWING_LEVEL] = {stateShowLevelEnter, stateShowLevelExit, stateShowLevelProcess, 0},
-        [GAME_STATE_USER_INPUT]    = {stateUserInputEnter, NULL, stateUserInputProcess, USER_INPUT_TIMEOUT_MS},
-        [GAME_STATE_SUCCESS]       = {stateSuccessEnter, stateSuccessExit, NULL, SUCCESS_STATE_TIMEOUT_MS},
-        [GAME_STATE_FAILED]        = {stateFailEnter, stateFailExit, NULL, FAILURE_STATE_TIMEOUT_MS},
-        [GAME_STATE_OFF]           = {statePowerOffEnter, NULL, statePowerOffProcess, 0},
-        [GAME_STATE_MENU]          = {stateMenuEnter, stateMenuExit, stateMenuProcess, MENU_TIMEOUT_MS},
-    };
-    gameStateInit(stateDefs);
-    gameStateProcessEvent(EVENT_START);
+    game.isRunning = true;
+    audioAmplifierInit();
+    effectManagerInit(NULL);
+    OLED_Init(&hi2c1);
+    OLED_FillScreen(Black);
+    OLED_UpdateScreen();
+    keyscanInit(onKeyPressCallback);
+    game.batteryCharge = batteryManagerGetPercent();
+    if (!gameSettingsRead(&game.settings)) {
+        gameSettingsReset();
+        gameSettingsRead(&game.settings);
+    }
+    showBatteryCharge();
+    if (game.batteryCharge <= 0) {
+        changeScene(GAME_SCENE_POWER_OFF);
+    } else {
+        changeScene(GAME_SCENE_POWER_ON);
+    }
 }
 
 void gameProcess()
 {
-    gameStateProcess();
+    userInputProcess();
+    sceneProcess();
     effectManagerProcess();
     animationSystemProcess();
     batteryProcess();
+}
+
+void gamePlaySuccessIndicaton()
+{
+    effectManagerPlaySuccess();
+    notePlayerPlayMelody(getMelody(MelodySuccess), getMelodyLength(MelodySuccess));
+}
+
+void gamePlayFailedIndication()
+{
+    effectManagerPlayFail();
+    notePlayerPlayMelody(getMelody(MelodyFail), getMelodyLength(MelodyFail));
+}
+
+void gameSetSceneInputCb(SceneInputCb cb)
+{
+    game.sceneInputCb = cb;
+}
+
+void gameOnSceneEnd()
+{
+    switch (game.currentScene) {
+    case GAME_SCENE_POWER_ON:
+    case GAME_SCENE_MENU:
+    case GAME_SCENE_IDLE:
+        gameSettingsRead(&game.settings);
+        if (GAME_MODE_MUSIC == game.settings.mode) {
+            changeScene(GAME_SCENE_MUSIC);
+        } else {
+            changeScene(GAME_SCENE_SIMON);
+        }
+        break;
+
+    case GAME_SCENE_SIMON:
+        changeScene(GAME_SCENE_IDLE);
+        break;
+
+    case GAME_SCENE_POWER_OFF:
+        game.isRunning = false;
+        break;
+    
+    default: assert(0);
+        break;
+    }
+}
+
+bool gameIsRunning()
+{
+    return game.isRunning;
+}
+
+uint32_t gameGetSleepDuration()
+{
+    uint32_t sleepMs = 0;
+    uint32_t nextAnimationUpdate = animationSystemGetNextUpdateInterval();
+
+    switch (game.currentScene) {
+    case GAME_SCENE_MUSIC:
+    case GAME_SCENE_IDLE:
+    case GAME_SCENE_MENU:
+        sleepMs = nextAnimationUpdate ? nextAnimationUpdate : UINT32_MAX;
+        break;
+
+    case GAME_SCENE_SIMON: {
+        uint32_t nextStateUpdate = gameStateGetNextProcessInterval();
+        if (nextAnimationUpdate) {
+            sleepMs = nextStateUpdate < nextAnimationUpdate ? nextStateUpdate : nextAnimationUpdate;
+        } else {
+            sleepMs = nextStateUpdate;
+        }
+    } break;
+
+    default: break;
+    }
+
+    return sleepMs;
 }

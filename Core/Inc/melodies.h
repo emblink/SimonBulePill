@@ -11,6 +11,7 @@ typedef enum {
 	MelodySuccess,
 	MelodyFail,
 	MelodyConfirm,
+	MelodyIdle,
 	MelodyCount,
 	MelodyTest,
 } Melody;

@@ -11,7 +11,6 @@
 #include "gameState.h"
 #include "generic.h"
 #include "stm32f1xx_ll_pwr.h"
-#include "animationSystem.h"
 
 #define APM_MUTE_TIMEOUT_MS 250
 
@@ -94,7 +93,7 @@ static void enterStopMode(uint32_t sleepDurationMs)
     HAL_ResumeTick();
 }
 
-static void enterStandbyMode()
+void sleepManagerEnterStandbyMode()
 {
     audioAmplifierShutdown(true);
     rtcAlarmDisable();
@@ -112,11 +111,6 @@ void sleepManagerProcess()
     bool isEffectPlaying = effectManagerIsPlaying();
     bool isKeyScanRunning = keyscanIsRunning();
 
-    if (GAME_STATE_OFF == gameStateGetCurrentState()) {
-        audioAmplifierMute(true);
-        enterStandbyMode();
-    }
-
     if (isSoundPlaying) {
         lastPlaybackMs = HAL_GetTick();
     } else {
@@ -128,12 +122,9 @@ void sleepManagerProcess()
     if (isSoundPlaying || isKeyScanRunning || isEffectPlaying) {
         __WFI();
     } else {
-        uint32_t nextStateUpdate = gameStateGetNextProcessInterval();
-        uint32_t nextAnimationUpdate = animationSystemGetNextUpdateInterval();
-        uint32_t sleepMs = nextStateUpdate < nextAnimationUpdate ? nextStateUpdate : nextAnimationUpdate;
+        uint32_t sleepMs = gameGetSleepDuration();
         if (sleepMs) {
             enterStopMode(sleepMs);
         }
     }
-    // HAL_IWDG_Refresh(&hiwdg);
 }

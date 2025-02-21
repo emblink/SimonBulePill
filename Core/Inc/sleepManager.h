@@ -2,3 +2,4 @@
 
 void sleepManagerInit();
 void sleepManagerProcess();
+void sleepManagerEnterStandbyMode();

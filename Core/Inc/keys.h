@@ -16,4 +16,15 @@ typedef enum {
 	KEY_COUNT,
 } Key;
 
+typedef union {
+    struct {
+        uint8_t red : 1;
+        uint8_t green : 1;
+        uint8_t blue : 1;
+        uint8_t yellow : 1;
+        uint8_t menu : 1;
+    };
+    uint32_t state;
+} Keys;
+
 extern const KeyPin keyTable[KEY_COUNT];

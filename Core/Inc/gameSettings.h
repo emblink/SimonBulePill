@@ -12,6 +12,7 @@ typedef enum {
 typedef enum {
     GAME_MODE_SINGLE = 0U,
     GAME_MODE_PVP,
+    GAME_MODE_MUSIC,
     GAME_MODE_COUNT,
 } GameMode;
 
