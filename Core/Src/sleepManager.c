@@ -11,6 +11,7 @@
 #include "gameState.h"
 #include "generic.h"
 #include "stm32f1xx_ll_pwr.h"
+#include "game.h"
 
 #define APM_MUTE_TIMEOUT_MS 250
 

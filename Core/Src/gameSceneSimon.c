@@ -112,12 +112,12 @@ static void stateShowLevelEnter()
     effectManagerStopAllEffects();
     levelIdx = 0;
 
+    levelRepeatCount++;
     if (levelRepeatCount > LEVEL_REPEAT_LIMIT) {
         levelRepeatCount = 0;
         gameStateProcessEvent(EVENT_LEVEL_REPEATED_TOO_MANY_TIMES);
         return;
     }
-    levelRepeatCount++;
 
     if (GAME_SEQUENCE_STATIC == settings.sequence) {
         currentLevel = levelsGetStaticLevel(settings.level);

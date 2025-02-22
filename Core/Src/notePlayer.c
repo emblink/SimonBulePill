@@ -173,7 +173,9 @@ void notePlayerPlayMelody(const Note mel[], uint32_t length)
 
 bool notePlayerIsPlaying()
 {
-	return PWM_TIMER->CR1 & TIM_CR1_CEN_Msk;
+    bool isMelodyPlaying = (NULL == melody) ? false : true;
+    bool isNotePlaying = NOTE_TIMER->CR1 & TIM_CR1_CEN_Msk;
+    return isMelodyPlaying || isNotePlaying;
 }
 
 void notePlayerStop()
