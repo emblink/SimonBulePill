@@ -1,6 +1,7 @@
 #include "gameIncludes.h"
 
 #define BATTERY_CHECK_PERIOD (MINUTE * 5)
+#define IDLE_STATE_TIMEOUT   (MINUTE)
 
 typedef struct {
     bool isRunning;
@@ -10,6 +11,7 @@ typedef struct {
     uint32_t lastBatteryCheckMs;
     volatile Keys input;
     SceneInputCb sceneInputCb;
+    uint32_t lastInputMs;
 } GameHandle;
 
 static GameHandle game = {0};
@@ -65,8 +67,26 @@ static void changeScene(GameScene newScene)
     game.currentScene = newScene;
 }
 
+static void processIdleTransition()
+{
+    if (game.currentScene == GAME_SCENE_SIMON) {
+        return;
+    }
+
+    if (isTimeoutHappened(game.lastInputMs, IDLE_STATE_TIMEOUT)) {
+        game.lastInputMs = HAL_GetTick(); // reset idle timer to avoid immediate power off transition
+        if (GAME_SCENE_IDLE == game.currentScene) {
+            changeScene(GAME_SCENE_POWER_OFF);
+        } else {
+            changeScene(GAME_SCENE_IDLE);
+        }
+    }
+}
+
 static void sceneProcess()
 {
+    processIdleTransition();
+
     switch (game.currentScene) {
     case GAME_SCENE_POWER_ON: gameScenePowerOnProcess(); break;
     case GAME_SCENE_SIMON: gameSceneSimonProcess(); break;
@@ -107,6 +127,10 @@ static void userInputProcess()
     Keys userInput = game.input; // copy state, should be atomic operation
     game.input.state &= ~userInput.state; // reset input state bits
     keyscanEnableIrq();
+
+    if (userInput.state) {
+        game.lastInputMs = HAL_GetTick();
+    }
     
     if (userInput.menu) {
         switch (game.currentScene) {
@@ -126,11 +150,10 @@ static void userInputProcess()
     }
 }
 
-void batteryProcess(void)
+static void batteryProcess(void)
 {
-    uint32_t currentTick = HAL_GetTick();
-    if (currentTick - game.lastBatteryCheckMs > BATTERY_CHECK_PERIOD) {
-        game.lastBatteryCheckMs = currentTick;
+    if (isTimeoutHappened(game.lastBatteryCheckMs, BATTERY_CHECK_PERIOD)) {
+        game.lastBatteryCheckMs = HAL_GetTick();
         game.batteryCharge = batteryManagerGetPercent();
         if (game.batteryCharge <= 0) {
             changeScene(GAME_SCENE_POWER_OFF);
@@ -222,13 +245,14 @@ uint32_t gameGetSleepDuration()
 {
     uint32_t sleepMs = 0;
     uint32_t nextAnimationUpdate = animationSystemGetNextUpdateInterval();
+    uint32_t idleTransitionMs = game.lastInputMs + IDLE_STATE_TIMEOUT - HAL_GetTick();
 
     switch (game.currentScene) {
     case GAME_SCENE_MUSIC:
     case GAME_SCENE_IDLE:
-    case GAME_SCENE_MENU:
-        sleepMs = nextAnimationUpdate ? nextAnimationUpdate : UINT32_MAX;
-        break;
+    case GAME_SCENE_MENU: {
+        sleepMs = nextAnimationUpdate < idleTransitionMs ? nextAnimationUpdate : idleTransitionMs;
+    } break;
 
     case GAME_SCENE_SIMON: {
         uint32_t nextStateUpdate = gameStateGetNextProcessInterval();

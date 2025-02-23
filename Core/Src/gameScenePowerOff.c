@@ -13,7 +13,7 @@ void gameScenePowerOffEnter()
     OLED_FillScreen(Black);
     OLED_SetCursor(0, 0);
     OLED_SetTextSize(FontSize16);
-    OLED_Printf("Zzz Zzz");
+    OLED_Printf("Power Off");
     OLED_UpdateScreen();
     effectManagerPlayPowerOff();
     notePlayerPlayMelody(getMelody(MelodyPowerOff), getMelodyLength(MelodyPowerOff));
