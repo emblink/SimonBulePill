@@ -11,7 +11,7 @@ static PlaybackCb finishedCb = NULL;
 #define NOTE_TIMER_CHANNEL TIM_CHANNEL_1
 #define NOTE_TIMER_CCR (NOTE_TIMER->CCR1)
 
-// 48Mhz clock, CCR1 = 1024 - 1 counter, updates by DMA from DMA_TIMER
+// 72Mhz clock, CCR1 = 1024 - 1 counter, updates by DMA from DMA_TIMER
 #define PWM_TIMER TIM2
 #define PWM_TIMER_HANDLE htim2
 #define PWM_TIMER_CHANNEL TIM_CHANNEL_2
@@ -165,6 +165,7 @@ void notePlayerPlayNote(uint32_t noteHz, uint32_t durationMs)
 
 void notePlayerPlayMelody(const Note mel[], uint32_t length)
 {
+	notePlayerStop();
 	melody = (Note *) mel;
 	melodyLen = length;
 	melodyNoteIdx = 0;
@@ -184,5 +185,6 @@ void notePlayerStop()
 	melodyLen = 0;
 	melodyNoteIdx = 0;
 	HAL_TIM_OC_Stop_IT(&NOTE_TIMER_HANDLE, NOTE_TIMER_CHANNEL);
-	stopPWM();
+    HAL_DMA_Abort(&DMA_TIMER_CHANNEL_HANDLE);
+    XferCpltCallback(NULL);
 }
