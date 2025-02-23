@@ -144,7 +144,9 @@ static void userInputProcess()
         // report only key press events for now
         for (int i = 0; i < KEY_COUNT; i++) {
             if (userInput.state & (1 << i)) {
-                game.sceneInputCb(i, true);
+                if (game.sceneInputCb) {
+                    game.sceneInputCb(i, true);
+                }
             }
         }
     }

@@ -14,7 +14,7 @@ static Melody melodiesToKeyMap[] = {
     [KEY_GREEN] = MelodyJingleBells,
     [KEY_BLUE] = MelodyHarryPotter,
     [KEY_RED] = MelodyStarWars,
-    [KEY_YELLOW] = MelodyIdle,
+    [KEY_YELLOW] = MelodyDvaVeselihGusya,
 };
 
 static void onMusicKey(Key key, bool pressed)
