@@ -103,6 +103,25 @@ static const Note StarWars[] = {
 };
 
 #undef NOTE_DUR
+#define NOTE_DUR 200
+static const Note DvaVeselihGusya[] = {
+    {NOTE_F4, NOTE_DUR}, {NOTE_E4, NOTE_DUR}, {NOTE_D4, NOTE_DUR}, {NOTE_C4, NOTE_DUR},
+    {NOTE_G4, NOTE_DUR * 2}, {NOTE_G4, NOTE_DUR * 2},
+    {NOTE_F4, NOTE_DUR}, {NOTE_E4, NOTE_DUR}, {NOTE_D4, NOTE_DUR}, {NOTE_C4, NOTE_DUR},
+    {NOTE_G4, NOTE_DUR * 2}, {NOTE_G4, NOTE_DUR * 2},
+
+    {NOTE_F4, NOTE_DUR}, {NOTE_A4, NOTE_DUR}, {NOTE_A4, NOTE_DUR}, {NOTE_F4, NOTE_DUR},
+    {NOTE_E4, NOTE_DUR}, {NOTE_G4, NOTE_DUR}, {NOTE_G4, NOTE_DUR}, {NOTE_E4, NOTE_DUR},
+    {NOTE_D4, NOTE_DUR}, {NOTE_E4, NOTE_DUR}, {NOTE_F4, NOTE_DUR}, {NOTE_D4, NOTE_DUR},
+    {NOTE_C4, NOTE_DUR * 2}, {NOTE_C4, NOTE_DUR * 2},
+
+    {NOTE_F4, NOTE_DUR}, {NOTE_A4, NOTE_DUR}, {NOTE_A4, NOTE_DUR}, {NOTE_F4, NOTE_DUR},
+    {NOTE_E4, NOTE_DUR}, {NOTE_G4, NOTE_DUR}, {NOTE_G4, NOTE_DUR}, {NOTE_E4, NOTE_DUR},
+    {NOTE_D4, NOTE_DUR}, {NOTE_E4, NOTE_DUR}, {NOTE_F4, NOTE_DUR}, {NOTE_D4, NOTE_DUR},
+    {NOTE_C4, NOTE_DUR * 2}, {NOTE_C4, NOTE_DUR * 2},
+};
+
+#undef NOTE_DUR
 #define NOTE_DUR 1000
 static const Note powerOnMelody[] = {
     {NOTE_C4, NOTE_DUR / 4}, {NOTE_E4, NOTE_DUR / 4},
@@ -110,8 +129,8 @@ static const Note powerOnMelody[] = {
 };
 
 static const Note powerOffMelody[] = {
-    {NOTE_C5, NOTE_DUR / 4}, {NOTE_G4, NOTE_DUR / 4},
-    {NOTE_E4, NOTE_DUR / 4}, {NOTE_C4, NOTE_DUR / 4}
+    {NOTE_C5, NOTE_DUR / 2}, {NOTE_A4, NOTE_DUR / 4},
+    {NOTE_F4, NOTE_DUR / 4}, {NOTE_D4, NOTE_DUR / 2}
 };
 
 #undef NOTE_DUR
@@ -134,6 +153,13 @@ static const Note confirmMelody[] = {
 	{NOTE_C5, NOTE_DUR}
 };
 
+#undef NOTE_DUR
+#define NOTE_DUR 100
+static const Note idleMelody[] = {
+    {NOTE_C5, NOTE_DUR}, {NOTE_G4, NOTE_DUR},
+    {NOTE_E4, NOTE_DUR}, {NOTE_C4, NOTE_DUR}, 
+};
+
 const Note * const getMelody(Melody melody)
 {
     switch (melody) {
@@ -146,6 +172,8 @@ const Note * const getMelody(Melody melody)
     case MelodySuccess: return successMelody;
     case MelodyFail: return failMelody;
     case MelodyConfirm: return confirmMelody;
+    case MelodyIdle: return idleMelody;
+    case MelodyDvaVeselihGusya: return DvaVeselihGusya;
     default: return JingleBells;
     }
 }
@@ -162,6 +190,8 @@ uint32_t getMelodyLength(Melody melody)
     case MelodySuccess: return ELEMENTS(successMelody);
     case MelodyFail: return ELEMENTS(failMelody);
     case MelodyConfirm: return ELEMENTS(confirmMelody);
+    case MelodyIdle: return ELEMENTS(idleMelody);
+    case MelodyDvaVeselihGusya: return ELEMENTS(DvaVeselihGusya);
     default: return 0;
     }
 }

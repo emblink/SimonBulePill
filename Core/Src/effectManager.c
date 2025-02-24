@@ -86,7 +86,9 @@ void effectManagerProcess(void)
         	uint32_t effectElapsed = tick - effect->startTime;
         	if (effectElapsed > effect->totalDuration) {
                 effect->effect = EFFECT_NONE; // End effect
-                finishedCb(i);
+                if (finishedCb) {
+                	finishedCb(i);
+                }
                 effectManagerStopEffect(i);
                 continue;
         	}
@@ -116,7 +118,9 @@ void effectManagerProcess(void)
             		continue;
             	} else {
             		effectManagerStopEffect(i);
-                    finishedCb(i);
+                    if (finishedCb) {
+                    	finishedCb(i);
+                    }
                     continue;
             	}
             }
@@ -241,17 +245,19 @@ void effectManagerPlayPowerOn()
 
 void effectManagerPlayPowerOff()
 {
-
+    effectManagerPlayEffect(EFFECT_BREATHE, LED_ALL, 1000, 1000);
 }
 
-void effectManagerPlaySuccess(uint32_t duration)
+void effectManagerPlaySuccess()
 {
-
+    #define SUCCESS_BLINK_COUNT 4
+    effectManagerPlayEffect(EFFECT_BLINK, LED_ALL, 600, 600 / SUCCESS_BLINK_COUNT);
 }
 
-void effectManagerPlayFail(uint32_t duration)
+void effectManagerPlayFail()
 {
-
+    #define FAIL_BLINK_COUNT 4
+    effectManagerPlayEffect(EFFECT_BLINK, LED_RED, 600, 600 / FAIL_BLINK_COUNT);
 }
 
 void effectManagerStopEffect(Led led)

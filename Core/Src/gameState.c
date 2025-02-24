@@ -2,13 +2,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "gameState.h"
-#include "gameStateTransitions.h"
+#include "sceneSimonStates.h"
+#include "sceneSimonTransitions.h"
 #include "stm32f1xx_hal.h"
 #include "generic.h"
 
 static const GameStateDef *stateDefs = NULL;
-static GameState currentState = GAME_STATE_NONE;
-static GameState nextState = GAME_STATE_NONE;
+static uint32_t currentState = GAME_STATE_INIT;
+static uint32_t nextState = GAME_STATE_INIT;
 static uint32_t transitionStartMs = 0;
 static uint32_t transitionTimeoutMs = 0;
 static uint32_t stateEnterMs = 0;
@@ -49,9 +50,18 @@ static void gameStateProcessTimeout()
 void gameStateInit(const GameStateDef *states)
 {
     stateDefs = states;
+    currentState = GAME_STATE_INIT;
+    nextState = GAME_STATE_INIT;
+    transitionStartMs = 0;
+    transitionTimeoutMs = 0;
+    stateEnterMs = 0;
+    if (stateDefs[currentState].onEnter) {
+        stateEnterMs = HAL_GetTick();
+        stateDefs[currentState].onEnter();
+    }
 }
 
-void gameStateProcessEvent(Event event)
+void gameStateProcessEvent(uint32_t event)
 {
     // Process current state event
     const StateTransition *transition = gameStateGetTransition(currentState, event);
@@ -60,7 +70,7 @@ void gameStateProcessEvent(Event event)
     }
 }
 
-void gameStateProcessEventWithDelay(Event event, uint32_t delayMs)
+void gameStateProcessEventWithDelay(uint32_t event, uint32_t delayMs)
 {
     // Process current state event
     const StateTransition *transition = gameStateGetTransition(currentState, event);
@@ -87,7 +97,7 @@ void gameStateProcess(void)
     gameStateProcessTimeout();
 }
 
-GameState gameStateGetCurrentState()
+uint32_t gameStateGetCurrentState()
 {
     return currentState;
 }

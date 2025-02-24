@@ -2,5 +2,6 @@
 
 bool isTimeoutHappened(uint32_t lastProcessMs, uint32_t timeoutMs)
 {
-    return HAL_GetTick() - lastProcessMs >= timeoutMs;
+    uint32_t currentTick = HAL_GetTick();
+    return currentTick - lastProcessMs >= timeoutMs;
 }
