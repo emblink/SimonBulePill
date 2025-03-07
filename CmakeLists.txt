@@ -1,0 +1,128 @@
+
+cmake_minimum_required (VERSION 3.13)
+set (CMAKE_SYSTEM_NAME Generic)
+set (CMAKE_SYSTEM_PROCESSOR arm)
+set (CMAKE_C_COMPILER arm-none-eabi-gcc)
+set (CMAKE_CXX_COMPILER arm-none-eabi-g++)
+set (CMAKE_C_FLAGS_INIT "--specs=nosys.specs")
+set (CMAKE_CXX_FLAGS_INIT "--specs=nosys.specs")
+set (triple arm-none-eabi)
+set (CMAKE_CROSSCOMPILING 1)
+set (LANGUAGES C CXX ASM)
+
+project(SimonGame ${LANGUAGES})
+
+set(ELF ${PROJECT_NAME}.elf)
+
+add_executable(${ELF})
+
+target_include_directories(${ELF} PUBLIC
+    Core/Inc
+    Core/Libs/oled
+    Core/Libs/oled/Fonts
+    Drives/Inc/Legacy
+    Drivers/STM32F1xx_HAL_Driver/Inc
+    Drivers/STM32F1xx_HAL_Driver/Inc/Legacy
+    Drivers/CMSIS/Include
+    Drivers/CMSIS/Device/ST/STM32F1xx/Include
+)
+
+target_sources(${ELF} PRIVATE
+    ./Core/Startup/startup_stm32f103c8tx.s
+
+    ./Core/Libs/oled/Fonts/font12.c
+    ./Core/Libs/oled/Fonts/font16.c
+    ./Core/Libs/oled/Fonts/font20.c
+    ./Core/Libs/oled/Fonts/font24.c
+    ./Core/Libs/oled/Fonts/font8.c
+    ./Core/Libs/oled/oled.c
+    ./Core/Src/adc.c
+    ./Core/Src/animation.c
+    ./Core/Src/animationSystem.c
+    ./Core/Src/audioAmplifier.c
+    ./Core/Src/batteryManager.c
+    ./Core/Src/crc.c
+    ./Core/Src/dma.c
+    ./Core/Src/effectManager.c
+    ./Core/Src/flashStorage.c
+    ./Core/Src/game.c
+    ./Core/Src/gameSceneIdle.c
+    ./Core/Src/gameSceneMenu.c
+    ./Core/Src/gameSceneMusic.c
+    ./Core/Src/gameScenePowerOff.c
+    ./Core/Src/gameScenePowerOn.c
+    ./Core/Src/gameSceneSimon.c
+    ./Core/Src/gameSettings.c
+    ./Core/Src/gameState.c
+    ./Core/Src/generic.c
+    ./Core/Src/gpio.c
+    ./Core/Src/i2c.c
+    ./Core/Src/keys.c
+    ./Core/Src/keyscan.c
+    ./Core/Src/levels.c
+    ./Core/Src/main.c
+    ./Core/Src/melodies.c
+    ./Core/Src/notePlayer.c
+    ./Core/Src/rtc.c
+    ./Core/Src/sceneSimonTransitions.c
+    ./Core/Src/sleepManager.c
+    ./Core/Src/stm32f1xx_hal_msp.c
+    ./Core/Src/stm32f1xx_it.c
+    ./Core/Src/syscalls.c
+    ./Core/Src/sysmem.c
+    ./Core/Src/system_stm32f1xx.c
+    ./Core/Src/tim.c
+    ./Core/Src/usart.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc_ex.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_crc.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_dma.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_i2c.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc_ex.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rtc.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rtc_ex.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c
+    ./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c
+)
+
+set_target_properties(
+    ${ELF}
+    PROPERTIES
+    LINK_FLAGS
+    "-T${PROJECT_SOURCE_DIR}/STM32F103C8TX_FLASH.ld \
+    -mthumb -mcpu=cortex-m3 \
+    -Wl,--gc-sections \
+    -Wl,-Map=${PROJECT_NAME}.map"
+)
+
+target_compile_options(${ELF} PUBLIC
+    -Wall 
+    -g3
+    -std=gnu11
+    -Os
+    -mthumb
+    -mcpu=cortex-m3
+    -mfloat-abi=soft
+    -mlittle-endian
+    -ffunction-sections 
+    -fdata-sections
+    # -Werror
+    -Wstrict-prototypes 
+    -Warray-bounds 
+    -fno-strict-aliasing 
+    -Wno-unused-const-variable 
+    -specs=nano.specs
+    -DDEBUG
+    -DUSE_HAL_DRIVER
+    -DSTM32F103xB
+)
