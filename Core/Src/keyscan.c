@@ -39,19 +39,23 @@ void keyscanInit(KeyCallback callback)
 
 void keyscanProcess()
 {
-	if (processCounter <= 0) {
-		return;
-	}
+    if (processCounter <= 0) {
+        return;
+    }
 
-	if (PROCESS_COUNT == processCounter) {
-		for (int key = KEY_RED; key < KEY_COUNT; key++) {
-			keyThreshold[key] = 0;
-		}
-	}
+    processCounter--;
+
+    bool pinState[KEY_COUNT] = {0};
+    for (int key = KEY_RED; key < KEY_COUNT; key++) {
+        pinState[key] = HAL_GPIO_ReadPin(keyTable[key].port, keyTable[key].pin);
+        if (GPIO_PIN_SET == pinState[key] || keyIsPressed[key]) {
+            // something is pressed, reset the counter
+            processCounter = PROCESS_COUNT;
+        }
+    }
 
 	for (int key = KEY_RED; key < KEY_COUNT; key++) {
-		GPIO_PinState state = HAL_GPIO_ReadPin(keyTable[key].port, keyTable[key].pin);
-		if (GPIO_PIN_SET == state) {
+		if (GPIO_PIN_SET == pinState[key]) {
 			keyThreshold[key]++;
 			if (keyThreshold[key] >= PRESSED_THRESHOLD) {
                 if (!keyIsPressed[key]) {
@@ -62,6 +66,7 @@ void keyscanProcess()
                         keyCb(key, keyIsPressed[key]);   
                     }
                 }
+                keyThreshold[key] = PRESSED_THRESHOLD;
 			}
 		} else {
 			keyThreshold[key]--;
@@ -74,10 +79,10 @@ void keyscanProcess()
                         keyCb(key, keyIsPressed[key]);
                     }
                 }
+                keyThreshold[key] = RELEASED_THRESHOLD;
 			}
 		}
 	}
-	processCounter--;
 }
 
 void keyscanDisableIrq()
@@ -93,5 +98,14 @@ void keyscanEnableIrq()
 
 bool keyscanIsRunning()
 {
-	return 0 != processCounter;
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+
+    int counter = processCounter;
+
+    if (0 == primask) {
+        __enable_irq();
+    }
+
+    return 0 != counter;
 }
